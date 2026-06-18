@@ -54,17 +54,17 @@
       display: grid;
       grid-template-areas:
         "header header header"
-        "left center right";
-      grid-template-columns: 320px 1fr 280px;
-      grid-template-rows: auto 1fr;
+        "left center right" !important;
+      grid-template-columns: 320px 1fr 280px !important;
+      grid-template-rows: auto 1fr !important;
       gap: 16px;
       padding: 18px;
     }
 
-    .header { grid-area: header; }
-    .left-col { grid-area: left; display: flex; flex-direction: column; gap: 16px; }
-    .center-area { grid-area: center; pointer-events: none; }
-    .right-col { grid-area: right; display: flex; flex-direction: column; gap: 16px; }
+    .header { grid-area: header !important; }
+    .left-col { grid-area: left !important; display: flex; flex-direction: column; gap: 16px; }
+    .center-area { grid-area: center !important; pointer-events: none; min-width: 100px; }
+    .right-col { grid-area: right !important; display: flex; flex-direction: column; gap: 16px; }
 
     .panel {
       pointer-events: auto;
@@ -306,16 +306,16 @@
     ::-webkit-scrollbar-track { background: rgba(255,255,255,0.04); border-radius: 3px; }
     ::-webkit-scrollbar-thumb { background: var(--mars-red); border-radius: 3px; }
 
-    @media (max-width: 1100px) {
+    @media (max-width: 800px) {
       #ui { 
         grid-template-areas: 
           "header"
           "left"
-          "right";
-        grid-template-columns: 1fr; 
-        grid-template-rows: auto auto auto; 
+          "right" !important;
+        grid-template-columns: 1fr !important; 
+        grid-template-rows: auto auto auto !important; 
       }
-      .center-area { display: none; }
+      .center-area { display: none !important; }
       .panel { max-height: none; }
     }
   </style>
@@ -594,10 +594,10 @@
         const centerY = this.height * 0.55;
         const gridRadius = 150;
 
-        ctx.strokeStyle = 'rgba(193, 68, 14, 0.15)';
-        ctx.lineWidth = 1;
-
-        // 绘制同心圆
+        // 绘制同心圆 - 增强可见性
+        ctx.strokeStyle = 'rgba(255, 180, 100, 0.35)';
+        ctx.lineWidth = 1.5;
+        
         for (let r = 20; r <= gridRadius; r += 30) {
           const perspectiveR = r * (1 - this.cameraHeight / 150);
           ctx.beginPath();
@@ -605,7 +605,10 @@
           ctx.stroke();
         }
 
-        // 绘制放射线
+        // 绘制放射线 - 增强可见性
+        ctx.strokeStyle = 'rgba(255, 150, 80, 0.25)';
+        ctx.lineWidth = 1;
+        
         for (let i = 0; i < 12; i++) {
           const angle = (i / 12) * Math.PI * 2 + this.cameraAngle;
           const x1 = centerX;
@@ -661,28 +664,32 @@
         const rotatedX = building.x * Math.cos(this.cameraAngle) - building.z * Math.sin(this.cameraAngle);
         const rotatedZ = building.x * Math.sin(this.cameraAngle) + building.z * Math.cos(this.cameraAngle);
 
-        const perspective = 1 - (rotatedZ + this.cameraHeight) / 200;
+        const perspective = Math.max(0.5, 1 - (rotatedZ + this.cameraHeight) / 200);
         const screenX = centerX + rotatedX * scale * perspective;
         const screenY = centerY - (building.y || 0) * scale * perspective - rotatedZ * scale * 0.3 * perspective;
 
-        const buildingScale = (building.scale || 1) * scale * perspective;
+        // 增大建筑基础尺寸
+        const buildingScale = Math.max(2, (building.scale || 1) * scale * perspective * 3);
         const color = CONFIG.buildingColors[building.type] || CONFIG.buildingColors['默认'];
 
-        // 绘制建筑阴影
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+        // 绘制建筑阴影 - 增大尺寸
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
         ctx.beginPath();
-        ctx.ellipse(screenX, centerY + 2, buildingScale * 8, buildingScale * 3, 0, 0, Math.PI * 2);
+        ctx.ellipse(screenX, centerY + 5, buildingScale * 12, buildingScale * 5, 0, 0, Math.PI * 2);
         ctx.fill();
 
         // 根据类型绘制不同形状
         this.drawBuildingByType(ctx, building, screenX, screenY, buildingScale, color);
 
-        // 绘制建筑名称标签
+        // 绘制建筑名称标签 - 增大字体
         if (building.showLabel) {
-          ctx.font = `${Math.max(10, 12 * perspective)}px "Noto Sans SC"`;
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+          ctx.font = `${Math.max(14, 16 * perspective)}px "Noto Sans SC"`;
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
           ctx.textAlign = 'center';
-          ctx.fillText(building.building, screenX, screenY - buildingScale * 25);
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+          ctx.shadowBlur = 4;
+          ctx.fillText(building.building, screenX, screenY - buildingScale * 35);
+          ctx.shadowBlur = 0;
         }
       }
 
