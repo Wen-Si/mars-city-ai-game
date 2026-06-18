@@ -442,9 +442,14 @@
         const dpr = window.devicePixelRatio || 1;
         this.canvas.width = window.innerWidth * dpr;
         this.canvas.height = window.innerHeight * dpr;
+        // 重置变换矩阵后再缩放，避免累积
+        this.ctx.setTransform(1, 0, 0, 1, 0, 0);
         this.ctx.scale(dpr, dpr);
         this.width = window.innerWidth;
         this.height = window.innerHeight;
+        // 重新初始化粒子位置
+        this.initParticles();
+        this.initStars();
       }
 
       initParticles() {
@@ -825,9 +830,10 @@
 
     // ============ 游戏逻辑 ============
     const canvas = document.getElementById('game-canvas');
-    const renderer = new MarsCityRenderer(canvas);
+    window.renderer = new MarsCityRenderer(canvas);
+    const renderer = window.renderer;
 
-    const game = {
+    window.game = {
       step: 0,
       auto: false,
       autoTimer: null,
