@@ -1,0 +1,1033 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>火星城市 · AI 建造计划</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Noto+Sans+SC:wght@300;400;700&display=swap');
+
+    :root {
+      --mars-red: #c1440e;
+      --mars-dark: #4a1910;
+      --mars-light: #e8784a;
+      --sand: #d4a574;
+      --ink: #0d0a09;
+      --panel: rgba(13, 10, 9, 0.78);
+      --panel-border: rgba(255, 140, 80, 0.28);
+      --glow: rgba(255, 120, 60, 0.55);
+      --success: #4ade80;
+      --info: #60a5fa;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      width: 100%; height: 100%;
+      overflow: hidden;
+      background: var(--ink);
+      color: #f3e6dc;
+      font-family: 'Noto Sans SC', sans-serif;
+    }
+
+    #canvas-container {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      background: radial-gradient(ellipse at 30% 20%, #4a1910 0%, #1a0f0c 50%, #0d0a09 100%);
+    }
+
+    #game-canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    #ui {
+      position: fixed;
+      inset: 0;
+      z-index: 10;
+      pointer-events: none;
+      display: grid;
+      grid-template-columns: 360px 1fr 320px;
+      grid-template-rows: auto 1fr auto;
+      gap: 18px;
+      padding: 22px;
+    }
+
+    .panel {
+      pointer-events: auto;
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      border-radius: 14px;
+      padding: 18px;
+      backdrop-filter: blur(14px);
+      box-shadow: 0 10px 40px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(255,255,255,0.04);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .panel:hover {
+      box-shadow: 0 14px 50px rgba(193, 68, 14, 0.22), inset 0 0 0 1px rgba(255,255,255,0.06);
+    }
+
+    h1 {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 26px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--mars-light);
+      text-shadow: 0 0 20px var(--glow);
+      margin-bottom: 4px;
+    }
+
+    .subtitle {
+      font-size: 12px;
+      color: var(--sand);
+      letter-spacing: 1px;
+      opacity: 0.85;
+    }
+
+    .header { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: flex-start; }
+
+    .left-col { grid-row: 2 / 4; display: flex; flex-direction: column; gap: 16px; }
+    .right-col { grid-row: 2 / 4; display: flex; flex-direction: column; gap: 16px; }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .stat {
+      background: rgba(255,255,255,0.04);
+      border-radius: 10px;
+      padding: 12px;
+      border-left: 3px solid var(--mars-red);
+    }
+
+    .stat-label {
+      font-size: 11px;
+      color: var(--sand);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 4px;
+    }
+
+    .stat-value {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 22px;
+      color: #fff;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 14px 18px;
+      border: none;
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--mars-red), #9a2e08);
+      color: #fff;
+      font-family: 'Orbitron', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      cursor: pointer;
+      text-transform: uppercase;
+      box-shadow: 0 4px 20px rgba(193, 68, 14, 0.35);
+      transition: all 0.2s ease;
+      margin-top: 14px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn::after {
+      content: '';
+      position: absolute;
+      top: 0; left: -100%;
+      width: 100%; height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent);
+      transition: left 0.5s ease;
+    }
+
+    .btn:hover::after { left: 100%; }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 28px rgba(193, 68, 14, 0.5);
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-secondary {
+      background: transparent;
+      border: 1px solid var(--panel-border);
+      box-shadow: none;
+      margin-top: 8px;
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 140, 80, 0.08);
+      box-shadow: 0 4px 16px rgba(193, 68, 14, 0.2);
+    }
+
+    .log {
+      flex: 1;
+      min-height: 180px;
+      max-height: 320px;
+      overflow-y: auto;
+      font-size: 13px;
+      line-height: 1.65;
+      color: #e8d4c4;
+    }
+
+    .log-entry {
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      animation: fadeIn 0.5s ease;
+    }
+
+    .log-entry:last-child { border-bottom: none; }
+
+    .log-step {
+      font-family: 'Orbitron', sans-serif;
+      color: var(--mars-light);
+      font-size: 11px;
+      letter-spacing: 1px;
+      margin-bottom: 2px;
+    }
+
+    .log-title {
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 4px;
+    }
+
+    .log-reason {
+      color: var(--sand);
+      font-size: 12px;
+    }
+
+    .building-card {
+      background: rgba(255,255,255,0.04);
+      border-radius: 12px;
+      padding: 16px;
+      margin-top: 12px;
+      border: 1px solid rgba(255,140,80,0.15);
+    }
+
+    .building-card .name {
+      font-family: 'Orbitron', sans-serif;
+      color: var(--mars-light);
+      font-size: 16px;
+      margin-bottom: 6px;
+    }
+
+    .building-card .meta {
+      font-size: 12px;
+      color: var(--sand);
+    }
+
+    .loader {
+      display: inline-block;
+      width: 16px; height: 16px;
+      border: 2px solid rgba(255,255,255,0.2);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-right: 8px;
+      vertical-align: middle;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 28px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      padding: 14px 24px;
+      border-radius: 10px;
+      color: #fff;
+      font-size: 14px;
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.4s ease;
+      z-index: 100;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+    }
+
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    .hint {
+      font-size: 11px;
+      color: rgba(212, 165, 116, 0.7);
+      margin-top: 10px;
+      line-height: 1.5;
+    }
+
+    .render-mode {
+      font-size: 10px;
+      color: var(--mars-light);
+      background: rgba(193, 68, 14, 0.15);
+      padding: 4px 8px;
+      border-radius: 4px;
+      margin-left: 10px;
+    }
+
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: rgba(255,255,255,0.04); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb { background: var(--mars-red); border-radius: 3px; }
+
+    @media (max-width: 1100px) {
+      #ui { grid-template-columns: 1fr; grid-template-rows: auto auto auto 1fr; }
+      .header { grid-column: 1; }
+      .left-col, .right-col { grid-row: auto; }
+      .panel { max-height: none; }
+    }
+  </style>
+</head>
+<body>
+  <div id="canvas-container">
+    <canvas id="game-canvas"></canvas>
+  </div>
+
+  <div id="ui">
+    <div class="panel header">
+      <div>
+        <h1>ARES · 火星城市 <span class="render-mode" id="render-mode-tag">Canvas 2D</span></h1>
+        <div class="subtitle">AI 大模型驱动的火星殖民地逐步建造模拟器 · 基于 LingBot-World 世界模型理念</div>
+      </div>
+      <div style="text-align:right;">
+        <div class="subtitle">SOL <span id="sol-counter">1</span></div>
+        <div class="subtitle" id="status-text">等待启动</div>
+      </div>
+    </div>
+
+    <div class="left-col">
+      <div class="panel">
+        <div class="subtitle" style="margin-bottom:8px;">殖民地状态</div>
+        <div class="stats-grid">
+          <div class="stat">
+            <div class="stat-label">建筑</div>
+            <div class="stat-value" id="stat-buildings">0</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">人口</div>
+            <div class="stat-value" id="stat-population">0</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">能源</div>
+            <div class="stat-value" id="stat-energy">0</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">氧气</div>
+            <div class="stat-value" id="stat-oxygen">0</div>
+          </div>
+        </div>
+        <button class="btn" id="btn-next" onclick="game.nextStep()">下一步建造</button>
+        <button class="btn btn-secondary" id="btn-auto" onclick="game.toggleAuto()">自动建造</button>
+        <button class="btn btn-secondary" onclick="game.reset()">重置殖民地</button>
+        <div class="hint">建筑由智谱 GLM-4.5-Flash 实时决策生成。拖动鼠标旋转视角，滚轮缩放。</div>
+      </div>
+
+      <div class="panel" style="flex:1; display:flex; flex-direction:column;">
+        <div class="subtitle" style="margin-bottom:10px;">AI 决策日志</div>
+        <div class="log" id="log"></div>
+      </div>
+    </div>
+
+    <div class="right-col">
+      <div class="panel">
+        <div class="subtitle" style="margin-bottom:8px;">当前计划</div>
+        <div id="current-plan" class="building-card">
+          <div class="name">—</div>
+          <div class="meta">暂无建造计划</div>
+        </div>
+      </div>
+
+      <div class="panel" style="flex:1;">
+        <div class="subtitle" style="margin-bottom:10px;">城市导览</div>
+        <div class="log" id="building-list" style="max-height: 360px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // ============ 配置 ============
+    const CONFIG = {
+      apiKey: '325d6fa364954d2e871c30ba95b553bd.KBdQdqgJgELJBhnv',
+      apiUrl: 'https://open.bigmodel.cn/api/paas/v4/chat/completions',
+      model: 'glm-4.5-flash',
+      maxTokens: 512,
+      cityRadius: 120,
+      buildingColors: {
+        '能源设施': '#ffaa44',
+        '生命支持': '#44aaff',
+        '居住区': '#eeeeee',
+        '研究中心': '#cc77ff',
+        '温室': '#55cc88',
+        '工厂': '#888899',
+        '交通设施': '#ff6644',
+        '防御设施': '#cc3333',
+        '存储设施': '#ddbb77',
+        '通讯设施': '#66ddff',
+        '默认': '#cccccc'
+      }
+    };
+
+    // ============ Canvas 2D 渲染器 ============
+    class MarsCityRenderer {
+      constructor(canvas) {
+        this.canvas = canvas;
+        this.ctx = canvas.getContext('2d');
+        this.buildings = [];
+        this.cameraAngle = 0;
+        this.cameraHeight = 45;
+        this.cameraDistance = 180;
+        this.targetAngle = 0;
+        this.dustParticles = [];
+        this.stars = [];
+        this.time = 0;
+        this.animationId = null;
+
+        this.resize();
+        window.addEventListener('resize', () => this.resize());
+
+        // 鼠标交互
+        this.isDragging = false;
+        this.lastMouseX = 0;
+        this.lastMouseY = 0;
+
+        canvas.addEventListener('mousedown', (e) => {
+          this.isDragging = true;
+          this.lastMouseX = e.clientX;
+          this.lastMouseY = e.clientY;
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+          if (this.isDragging) {
+            const dx = e.clientX - this.lastMouseX;
+            const dy = e.clientY - this.lastMouseY;
+            this.targetAngle += dx * 0.005;
+            this.cameraHeight = Math.max(20, Math.min(80, this.cameraHeight - dy * 0.3));
+            this.lastMouseX = e.clientX;
+            this.lastMouseY = e.clientY;
+          }
+        });
+
+        canvas.addEventListener('mouseup', () => this.isDragging = false);
+        canvas.addEventListener('mouseleave', () => this.isDragging = false);
+
+        canvas.addEventListener('wheel', (e) => {
+          e.preventDefault();
+          this.cameraDistance = Math.max(80, Math.min(350, this.cameraDistance + e.deltaY * 0.3));
+        });
+
+        // 初始化粒子
+        this.initParticles();
+        this.initStars();
+        this.startAnimation();
+      }
+
+      resize() {
+        const dpr = window.devicePixelRatio || 1;
+        this.canvas.width = window.innerWidth * dpr;
+        this.canvas.height = window.innerHeight * dpr;
+        this.ctx.scale(dpr, dpr);
+        this.width = window.innerWidth;
+        this.height = window.innerHeight;
+      }
+
+      initParticles() {
+        this.dustParticles = [];
+        for (let i = 0; i < 80; i++) {
+          this.dustParticles.push({
+            x: Math.random() * this.width,
+            y: Math.random() * this.height,
+            size: Math.random() * 2 + 0.5,
+            speed: Math.random() * 0.3 + 0.1,
+            opacity: Math.random() * 0.3 + 0.1
+          });
+        }
+      }
+
+      initStars() {
+        this.stars = [];
+        for (let i = 0; i < 200; i++) {
+          this.stars.push({
+            x: Math.random() * this.width,
+            y: Math.random() * this.height * 0.6,
+            size: Math.random() * 1.5 + 0.3,
+            twinkle: Math.random() * Math.PI * 2,
+            speed: Math.random() * 0.02 + 0.01
+          });
+        }
+      }
+
+      startAnimation() {
+        if (this.animationId) cancelAnimationFrame(this.animationId);
+        this.animate();
+      }
+
+      animate() {
+        this.time += 0.016;
+        this.cameraAngle += (this.targetAngle - this.cameraAngle) * 0.05;
+        this.render();
+        this.animationId = requestAnimationFrame(() => this.animate());
+      }
+
+      render() {
+        const ctx = this.ctx;
+        const w = this.width;
+        const h = this.height;
+
+        // 清空并绘制背景
+        ctx.fillStyle = '#0d0a09';
+        ctx.fillRect(0, 0, w, h);
+
+        // 绘制星空
+        this.stars.forEach(star => {
+          star.twinkle += star.speed;
+          const opacity = 0.3 + Math.sin(star.twinkle) * 0.3;
+          ctx.fillStyle = `rgba(255, 245, 230, ${opacity})`;
+          ctx.beginPath();
+          ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+          ctx.fill();
+        });
+
+        // 绘制火星地平线渐变
+        const gradient = ctx.createLinearGradient(0, h * 0.35, 0, h);
+        gradient.addColorStop(0, '#2a1510');
+        gradient.addColorStop(0.3, '#4a1910');
+        gradient.addColorStop(0.6, '#6a2515');
+        gradient.addColorStop(1, '#8a3018');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, h * 0.35, w, h * 0.65);
+
+        // 绘制地面网格
+        this.drawGroundGrid();
+
+        // 绘制尘雾粒子
+        this.dustParticles.forEach(p => {
+          p.x += p.speed;
+          if (p.x > w) p.x = 0;
+          ctx.fillStyle = `rgba(212, 165, 116, ${p.opacity})`;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+          ctx.fill();
+        });
+
+        // 绘制建筑
+        this.drawBuildings();
+
+        // 绘制太阳光晕
+        this.drawSunGlow();
+      }
+
+      drawGroundGrid() {
+        const ctx = this.ctx;
+        const centerX = this.width / 2;
+        const centerY = this.height * 0.55;
+        const gridRadius = 150;
+
+        ctx.strokeStyle = 'rgba(193, 68, 14, 0.15)';
+        ctx.lineWidth = 1;
+
+        // 绘制同心圆
+        for (let r = 20; r <= gridRadius; r += 30) {
+          const perspectiveR = r * (1 - this.cameraHeight / 150);
+          ctx.beginPath();
+          ctx.ellipse(centerX, centerY, perspectiveR, perspectiveR * 0.4, 0, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+
+        // 绘制放射线
+        for (let i = 0; i < 12; i++) {
+          const angle = (i / 12) * Math.PI * 2 + this.cameraAngle;
+          const x1 = centerX;
+          const y1 = centerY;
+          const x2 = centerX + Math.cos(angle) * gridRadius * (1 - this.cameraHeight / 150);
+          const y2 = centerY + Math.sin(angle) * gridRadius * 0.4 * (1 - this.cameraHeight / 150);
+
+          ctx.beginPath();
+          ctx.moveTo(x1, y1);
+          ctx.lineTo(x2, y2);
+          ctx.stroke();
+        }
+      }
+
+      drawSunGlow() {
+        const ctx = this.ctx;
+        const sunX = this.width * 0.75;
+        const sunY = this.height * 0.15;
+
+        const gradient = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, 80);
+        gradient.addColorStop(0, 'rgba(255, 200, 100, 0.4)');
+        gradient.addColorStop(0.5, 'rgba(255, 150, 80, 0.15)');
+        gradient.addColorStop(1, 'rgba(255, 100, 50, 0)');
+
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(sunX, sunY, 80, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      drawBuildings() {
+        const ctx = this.ctx;
+        const centerX = this.width / 2;
+        const centerY = this.height * 0.55;
+
+        // 按距离排序（远的先画）
+        const sortedBuildings = [...this.buildings].sort((a, b) => {
+          const distA = Math.sqrt(a.x * a.x + a.z * a.z);
+          const distB = Math.sqrt(b.x * b.x + b.z * b.z);
+          return distB - distA;
+        });
+
+        sortedBuildings.forEach(b => {
+          this.drawBuilding(b, centerX, centerY);
+        });
+      }
+
+      drawBuilding(building, centerX, centerY) {
+        const ctx = this.ctx;
+        const scale = 0.6 + (this.cameraDistance / 350) * 0.4;
+
+        // 3D投影
+        const rotatedX = building.x * Math.cos(this.cameraAngle) - building.z * Math.sin(this.cameraAngle);
+        const rotatedZ = building.x * Math.sin(this.cameraAngle) + building.z * Math.cos(this.cameraAngle);
+
+        const perspective = 1 - (rotatedZ + this.cameraHeight) / 200;
+        const screenX = centerX + rotatedX * scale * perspective;
+        const screenY = centerY - (building.y || 0) * scale * perspective - rotatedZ * scale * 0.3 * perspective;
+
+        const buildingScale = (building.scale || 1) * scale * perspective;
+        const color = CONFIG.buildingColors[building.type] || CONFIG.buildingColors['默认'];
+
+        // 绘制建筑阴影
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+        ctx.beginPath();
+        ctx.ellipse(screenX, centerY + 2, buildingScale * 8, buildingScale * 3, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 根据类型绘制不同形状
+        this.drawBuildingByType(ctx, building, screenX, screenY, buildingScale, color);
+
+        // 绘制建筑名称标签
+        if (building.showLabel) {
+          ctx.font = `${Math.max(10, 12 * perspective)}px "Noto Sans SC"`;
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+          ctx.textAlign = 'center';
+          ctx.fillText(building.building, screenX, screenY - buildingScale * 25);
+        }
+      }
+
+      drawBuildingByType(ctx, building, x, y, scale, color) {
+        const type = building.type;
+
+        switch (type) {
+          case '能源设施':
+            this.drawEnergyFacility(ctx, x, y, scale, color);
+            break;
+          case '生命支持':
+          case '居住区':
+            this.drawHabitat(ctx, x, y, scale, color);
+            break;
+          case '研究中心':
+          case '通讯设施':
+          case '防御设施':
+            this.drawTower(ctx, x, y, scale, color);
+            break;
+          case '温室':
+            this.drawGreenhouse(ctx, x, y, scale, color);
+            break;
+          case '工厂':
+            this.drawFactory(ctx, x, y, scale, color);
+            break;
+          case '交通设施':
+            this.drawRoad(ctx, x, y, scale, color);
+            break;
+          default:
+            this.drawDefaultBuilding(ctx, x, y, scale, color);
+        }
+      }
+
+      drawEnergyFacility(ctx, x, y, scale, color) {
+        // 基座
+        ctx.fillStyle = '#555566';
+        ctx.beginPath();
+        ctx.moveTo(x - scale * 12, y);
+        ctx.lineTo(x + scale * 12, y);
+        ctx.lineTo(x + scale * 10, y - scale * 8);
+        ctx.lineTo(x - scale * 10, y - scale * 8);
+        ctx.closePath();
+        ctx.fill();
+
+        // 核心
+        ctx.fillStyle = color;
+        ctx.shadowColor = color;
+        ctx.shadowBlur = 15;
+        ctx.beginPath();
+        ctx.moveTo(x - scale * 6, y - scale * 8);
+        ctx.lineTo(x + scale * 6, y - scale * 8);
+        ctx.lineTo(x, y - scale * 30);
+        ctx.closePath();
+        ctx.fill();
+        ctx.shadowBlur = 0;
+
+        // 发光环
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.ellipse(x, y - scale * 15, scale * 10, scale * 4, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      drawHabitat(ctx, x, y, scale, color) {
+        // 穹顶
+        ctx.fillStyle = 'rgba(200, 200, 210, 0.7)';
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.ellipse(x, y - scale * 12, scale * 14, scale * 12, 0, Math.PI, 0);
+        ctx.fill();
+        ctx.stroke();
+
+        // 基座
+        ctx.fillStyle = '#777788';
+        ctx.beginPath();
+        ctx.ellipse(x, y, scale * 14, scale * 5, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 窗户发光点
+        for (let i = 0; i < 8; i++) {
+          const wx = x + (Math.random() - 0.5) * scale * 20;
+          const wy = y - scale * 5 - Math.random() * scale * 15;
+          ctx.fillStyle = 'rgba(255, 220, 150, 0.8)';
+          ctx.beginPath();
+          ctx.arc(wx, wy, scale * 1.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      drawTower(ctx, x, y, scale, color) {
+        // 主体
+        ctx.fillStyle = color;
+        ctx.fillRect(x - scale * 6, y - scale * 35, scale * 12, scale * 35);
+
+        // 顶部天线
+        ctx.fillStyle = '#ff3300';
+        ctx.shadowColor = '#ff2200';
+        ctx.shadowBlur = 10;
+        ctx.fillRect(x - scale * 1.5, y - scale * 45, scale * 3, scale * 12);
+        ctx.shadowBlur = 0;
+
+        // 横梁
+        ctx.fillStyle = '#aaaaaa';
+        ctx.fillRect(x - scale * 8, y - scale * 25, scale * 16, scale * 2);
+      }
+
+      drawGreenhouse(ctx, x, y, scale, color) {
+        // 主体框架
+        ctx.fillStyle = 'rgba(85, 204, 136, 0.4)';
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.rect(x - scale * 20, y - scale * 12, scale * 40, scale * 12);
+        ctx.fill();
+        ctx.stroke();
+
+        // 内部植物
+        for (let i = 0; i < 12; i++) {
+          const px = x - scale * 18 + Math.random() * scale * 36;
+          const py = y - scale * 2 - Math.random() * scale * 8;
+          ctx.fillStyle = '#33aa55';
+          ctx.beginPath();
+          ctx.arc(px, py, scale * 2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      drawFactory(ctx, x, y, scale, color) {
+        // 主体
+        ctx.fillStyle = color;
+        ctx.fillRect(x - scale * 18, y - scale * 15, scale * 36, scale * 15);
+
+        // 烟囱
+        ctx.fillStyle = '#555555';
+        ctx.fillRect(x + scale * 10, y - scale * 30, scale * 5, scale * 15);
+        ctx.fillRect(x - scale * 12, y - scale * 25, scale * 4, scale * 10);
+
+        // 烟雾效果
+        ctx.fillStyle = 'rgba(150, 150, 150, 0.3)';
+        for (let i = 0; i < 3; i++) {
+          ctx.beginPath();
+          ctx.arc(x + scale * 12 + Math.sin(this.time * 2 + i) * scale * 3, y - scale * 35 - i * scale * 5, scale * 4 + i * scale * 2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      drawRoad(ctx, x, y, scale, color) {
+        ctx.fillStyle = '#333333';
+        ctx.fillRect(x - scale * 25, y - scale * 2, scale * 50, scale * 4);
+
+        // 中线
+        ctx.fillStyle = color;
+        ctx.fillRect(x - scale * 25, y - scale * 0.5, scale * 50, scale * 1);
+      }
+
+      drawDefaultBuilding(ctx, x, y, scale, color) {
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.moveTo(x - scale * 10, y);
+        ctx.lineTo(x + scale * 10, y);
+        ctx.lineTo(x + scale * 8, y - scale * 20);
+        ctx.lineTo(x - scale * 8, y - scale * 20);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      addBuilding(building) {
+        this.buildings.push({
+          ...building,
+          y: 0,
+          showLabel: true,
+          animProgress: 0
+        });
+
+        // 建筑升起动画
+        const b = this.buildings[this.buildings.length - 1];
+        const animateRise = () => {
+          b.animProgress += 0.03;
+          if (b.animProgress < 1) {
+            b.y = -20 * (1 - b.animProgress);
+            requestAnimationFrame(animateRise);
+          } else {
+            b.y = 0;
+          }
+        };
+        animateRise();
+      }
+
+      clearBuildings() {
+        this.buildings = [];
+      }
+    }
+
+    // ============ 游戏逻辑 ============
+    const canvas = document.getElementById('game-canvas');
+    const renderer = new MarsCityRenderer(canvas);
+
+    const game = {
+      step: 0,
+      auto: false,
+      autoTimer: null,
+      buildings: [],
+      stats: { population: 0, energy: 0, oxygen: 0 },
+      history: [],
+      processing: false,
+
+      reset() {
+        this.step = 0;
+        this.buildings = [];
+        this.stats = { population: 0, energy: 0, oxygen: 0 };
+        this.history = [];
+        this.auto = false;
+        clearInterval(this.autoTimer);
+        renderer.clearBuildings();
+        document.getElementById('log').innerHTML = '';
+        document.getElementById('building-list').innerHTML = '';
+        document.getElementById('current-plan').innerHTML = '<div class="name">—</div><div class="meta">暂无建造计划</div>';
+        this.updateStats();
+        this.setStatus('等待启动');
+        showToast('殖民地已重置');
+      },
+
+      async nextStep() {
+        if (this.processing) return;
+        this.processing = true;
+        const btn = document.getElementById('btn-next');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="loader"></span>AI 思考中...';
+        this.setStatus('AI 正在规划下一步...');
+
+        try {
+          const plan = await this.fetchPlan();
+          this.applyPlan(plan);
+        } catch (err) {
+          console.error(err);
+          showToast('AI 决策失败：' + err.message);
+          this.setStatus('决策失败');
+        } finally {
+          this.processing = false;
+          btn.disabled = false;
+          btn.innerHTML = '下一步建造';
+        }
+      },
+
+      async fetchPlan() {
+        const messages = this.buildPrompt();
+        const res = await fetch(CONFIG.apiUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${CONFIG.apiKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            model: CONFIG.model,
+            messages: messages,
+            max_tokens: CONFIG.maxTokens,
+            temperature: 0.75,
+            thinking: { type: 'disabled' }
+          })
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        const content = data.choices[0].message.content;
+        return this.parsePlan(content);
+      },
+
+      buildPrompt() {
+        const summary = this.buildings.length === 0
+          ? '火星殖民地尚未建立，这是第一步。'
+          : `当前已建造 ${this.buildings.length} 个设施：\n` + this.buildings.slice(-8).map((b, i) =>
+              `${i+1}. ${b.building}（${b.type}）`).join('\n');
+
+        const system = `你是 ARES 火星城市规划 AI，负责在火星表面一步一步决策建造设施，建立自给自足的人类城市。
+你必须基于当前殖民地状态，选择最合理的下一步建筑。
+建筑类型必须是以下之一：能源设施、生命支持、居住区、研究中心、温室、工厂、交通设施、防御设施、存储设施、通讯设施。
+返回严格 JSON 格式，不要添加解释文字。坐标 x、z 以城市中心为原点，范围 -80 到 80，避免与已有建筑重叠。
+JSON 字段：building(建筑名), type(类型), reason(50字以内原因), x, z, scale(0.6-1.6)。`;
+
+        const user = `第 ${this.step + 1} 步建造决策。\n${summary}\n当前人口 ${this.stats.population}，能源 ${this.stats.energy}，氧气 ${this.stats.oxygen}。请决定下一步建造什么，并返回 JSON。`;
+
+        return [
+          { role: 'system', content: system },
+          { role: 'user', content: user }
+        ];
+      },
+
+      parsePlan(content) {
+        let json = content;
+        const codeMatch = content.match(/```json\s*([\s\S]*?)```/);
+        if (codeMatch) json = codeMatch[1];
+        const obj = JSON.parse(json);
+        if (!obj.building || !obj.type) throw new Error('返回格式不正确');
+        obj.step = this.step + 1;
+        obj.x = Math.max(-80, Math.min(80, obj.x || 0));
+        obj.z = Math.max(-80, Math.min(80, obj.z || 0));
+        obj.scale = Math.max(0.6, Math.min(1.6, obj.scale || 1));
+        return obj;
+      },
+
+      applyPlan(plan) {
+        this.step++;
+        this.buildings.push(plan);
+        this.history.push(plan);
+        renderer.addBuilding(plan);
+        this.updateStatsFromPlan(plan);
+        this.updateStats();
+        this.addLog(plan);
+        this.updateCurrentPlan(plan);
+        this.updateBuildingList();
+        this.setStatus(`已完成第 ${this.step} 步建造`);
+        showToast(`已建造：${plan.building}`);
+      },
+
+      updateStatsFromPlan(plan) {
+        const type = plan.type;
+        if (type === '能源设施') this.stats.energy += 25;
+        if (type === '生命支持') { this.stats.oxygen += 20; this.stats.population += 10; }
+        if (type === '居住区') { this.stats.population += 40; this.stats.oxygen -= 5; }
+        if (type === '研究中心') { this.stats.energy -= 5; this.stats.population += 8; }
+        if (type === '温室') { this.stats.oxygen += 30; this.stats.population += 5; }
+        if (type === '工厂') { this.stats.energy -= 10; this.stats.population += 15; }
+        if (type === '交通设施') { this.stats.energy -= 2; }
+        if (type === '防御设施') { this.stats.energy -= 3; }
+        if (type === '存储设施') { this.stats.population += 5; }
+        if (type === '通讯设施') { this.stats.energy -= 4; }
+        this.stats.population = Math.max(0, this.stats.population);
+        this.stats.energy = Math.max(0, this.stats.energy);
+        this.stats.oxygen = Math.max(0, this.stats.oxygen);
+      },
+
+      updateStats() {
+        document.getElementById('stat-buildings').textContent = this.buildings.length;
+        document.getElementById('stat-population').textContent = this.stats.population;
+        document.getElementById('stat-energy').textContent = this.stats.energy;
+        document.getElementById('stat-oxygen').textContent = this.stats.oxygen;
+        document.getElementById('sol-counter').textContent = Math.max(1, this.step);
+      },
+
+      addLog(plan) {
+        const log = document.getElementById('log');
+        const entry = document.createElement('div');
+        entry.className = 'log-entry';
+        entry.innerHTML = `
+          <div class="log-step">STEP ${plan.step}</div>
+          <div class="log-title">${plan.building} · ${plan.type}</div>
+          <div class="log-reason">${plan.reason}</div>
+        `;
+        log.insertBefore(entry, log.firstChild);
+      },
+
+      updateCurrentPlan(plan) {
+        document.getElementById('current-plan').innerHTML = `
+          <div class="name">${plan.building}</div>
+          <div class="meta">类型：${plan.type}<br>坐标：(${plan.x.toFixed(1)}, ${plan.z.toFixed(1)})<br>规模：${plan.scale.toFixed(2)}</div>
+        `;
+      },
+
+      updateBuildingList() {
+        const list = document.getElementById('building-list');
+        list.innerHTML = this.buildings.slice().reverse().map(b => `
+          <div class="log-entry" style="padding:8px 0;">
+            <div class="log-step">STEP ${b.step}</div>
+            <div class="log-title">${b.building}</div>
+            <div class="log-reason">${b.type} · (${b.x.toFixed(0)}, ${b.z.toFixed(0)})</div>
+          </div>
+        `).join('');
+      },
+
+      setStatus(text) {
+        document.getElementById('status-text').textContent = text;
+      },
+
+      toggleAuto() {
+        this.auto = !this.auto;
+        const btn = document.getElementById('btn-auto');
+        if (this.auto) {
+          btn.textContent = '停止自动';
+          btn.style.borderColor = 'var(--mars-red)';
+          this.nextStep();
+          this.autoTimer = setInterval(() => this.nextStep(), 6000);
+        } else {
+          btn.textContent = '自动建造';
+          btn.style.borderColor = '';
+          clearInterval(this.autoTimer);
+        }
+      }
+    };
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 2800);
+    }
+
+    // 初始状态
+    game.updateStats();
+    showToast('ARES 火星城市准备就绪 · 点击下一步开始建造');
+  </script>
+</body>
+</html>
