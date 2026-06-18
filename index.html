@@ -52,25 +52,42 @@
       z-index: 10;
       pointer-events: none;
       display: grid;
-      grid-template-columns: 360px 1fr 320px;
-      grid-template-rows: auto 1fr auto;
-      gap: 18px;
-      padding: 22px;
+      grid-template-areas:
+        "header header header"
+        "left center right";
+      grid-template-columns: 320px 1fr 280px;
+      grid-template-rows: auto 1fr;
+      gap: 16px;
+      padding: 18px;
     }
+
+    .header { grid-area: header; }
+    .left-col { grid-area: left; display: flex; flex-direction: column; gap: 16px; }
+    .center-area { grid-area: center; pointer-events: none; }
+    .right-col { grid-area: right; display: flex; flex-direction: column; gap: 16px; }
 
     .panel {
       pointer-events: auto;
-      background: var(--panel);
+      background: rgba(13, 10, 9, 0.65);
       border: 1px solid var(--panel-border);
       border-radius: 14px;
-      padding: 18px;
-      backdrop-filter: blur(14px);
-      box-shadow: 0 10px 40px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(255,255,255,0.04);
+      padding: 16px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(255,255,255,0.03);
       transition: transform 0.3s ease, box-shadow 0.3s ease;
     }
 
     .panel:hover {
-      box-shadow: 0 14px 50px rgba(193, 68, 14, 0.22), inset 0 0 0 1px rgba(255,255,255,0.06);
+      box-shadow: 0 12px 40px rgba(193, 68, 14, 0.18), inset 0 0 0 1px rgba(255,255,255,0.05);
+    }
+
+    /* 中央区域透明，让Canvas可见 */
+    .center-area {
+      pointer-events: none;
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+      backdrop-filter: none !important;
     }
 
     h1 {
@@ -90,10 +107,11 @@
       opacity: 0.85;
     }
 
-    .header { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: flex-start; }
-
-    .left-col { grid-row: 2 / 4; display: flex; flex-direction: column; gap: 16px; }
-    .right-col { grid-row: 2 / 4; display: flex; flex-direction: column; gap: 16px; }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
 
     .stats-grid {
       display: grid;
@@ -289,9 +307,15 @@
     ::-webkit-scrollbar-thumb { background: var(--mars-red); border-radius: 3px; }
 
     @media (max-width: 1100px) {
-      #ui { grid-template-columns: 1fr; grid-template-rows: auto auto auto 1fr; }
-      .header { grid-column: 1; }
-      .left-col, .right-col { grid-row: auto; }
+      #ui { 
+        grid-template-areas: 
+          "header"
+          "left"
+          "right";
+        grid-template-columns: 1fr; 
+        grid-template-rows: auto auto auto; 
+      }
+      .center-area { display: none; }
       .panel { max-height: none; }
     }
   </style>
@@ -312,6 +336,9 @@
         <div class="subtitle" id="status-text">等待启动</div>
       </div>
     </div>
+
+    <!-- 中央空白区域，让Canvas可见 -->
+    <div class="center-area"></div>
 
     <div class="left-col">
       <div class="panel">
@@ -346,6 +373,7 @@
       </div>
     </div>
 
+    <!-- 右侧列 -->
     <div class="right-col">
       <div class="panel">
         <div class="subtitle" style="margin-bottom:8px;">当前计划</div>
@@ -494,16 +522,17 @@
         }
       }
 
-      startAnimation() {
-        if (this.animationId) cancelAnimationFrame(this.animationId);
-        this.animate();
-      }
-
       animate() {
         this.time += 0.016;
         this.cameraAngle += (this.targetAngle - this.cameraAngle) * 0.05;
         this.render();
         this.animationId = requestAnimationFrame(() => this.animate());
+      }
+
+      startAnimation() {
+        if (this.animationId) cancelAnimationFrame(this.animationId);
+        console.log('Starting animation loop...');
+        this.animate();
       }
 
       render() {
