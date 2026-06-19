@@ -993,26 +993,59 @@
 
       parsePlan(content) {
         console.log('AI raw response:', content);
-        let json = content;
         
-        // 方法1：提取 ```json ... ``` 代码块
+        // 多种策略尝试提取和解析JSON
+        const attempts = [];
         const codeMatch = content.match(/```json\s*([\s\S]*?)```/);
-        if (codeMatch) json = codeMatch[1].trim();
+        if (codeMatch) attempts.push(codeMatch[1].trim());
+        attempts.push(content.trim());
         
-        // 方法2：提取 { ... } 花括号
-        const firstBrace = json.indexOf('{');
-        const lastBrace = json.lastIndexOf('}');
-        if (firstBrace >= 0 && lastBrace > firstBrace) {
-          json = json.substring(firstBrace, lastBrace + 1);
+        for (const attempt of attempts) {
+          // 尝试直接解析
+          try {
+            const parsed = JSON.parse(attempt);
+            return this.processPlanObj(Array.isArray(parsed) ? parsed[0] : parsed);
+          } catch (e) {}
+          
+          // 尝试提取数组 [...] 
+          const arrayMatch = attempt.match(/\[[\s\S]*\]/);
+          if (arrayMatch) {
+            try {
+              const arr = JSON.parse(arrayMatch[0]);
+              if (arr.length > 0) return this.processPlanObj(arr[0]);
+            } catch (e) {}
+          }
+          
+          // 尝试提取对象 {...}
+          const firstBrace = attempt.indexOf('{');
+          const lastBrace = attempt.lastIndexOf('}');
+          if (firstBrace >= 0 && lastBrace > firstBrace) {
+            let json = attempt.substring(firstBrace, lastBrace + 1);
+            json = json.trim();
+            json = json.replace(/,\s*}/g, '}');
+            
+            // 检测多对象模式（如 },{ 或 },\n{）
+            if (json.match(/\}[,\s]*\{/)) {
+              json = '[' + json + ']';
+              try {
+                const arr = JSON.parse(json);
+                if (arr.length > 0) return this.processPlanObj(arr[0]);
+              } catch (e) {}
+            }
+            
+            try {
+              const obj = JSON.parse(json);
+              return this.processPlanObj(obj);
+            } catch (e) {
+              console.log('JSON parse failed:', json.substring(0, 200), e.message);
+            }
+          }
         }
         
-        // 清理常见问题
-        json = json.trim();
-        // 移除可能的尾随逗号在最后一个属性
-        json = json.replace(/,\s*}/g, '}');
-        
-        console.log('Parsed JSON:', json);
-        const obj = JSON.parse(json);
+        throw new Error('无法解析AI返回的JSON');
+      },
+
+      processPlanObj(obj) {
         if (!obj.building || !obj.type) throw new Error('返回格式不正确');
         obj.step = this.step + 1;
         obj.x = Math.max(-CONFIG.coordRange, Math.min(CONFIG.coordRange, obj.x || 0));
