@@ -685,24 +685,26 @@
           let collision = true;
           let offsetAttempts = 0;
           
-          while (collision && offsetAttempts < 8) {
+          while (collision && offsetAttempts < 12) {
             collision = false;
             for (const r of labelRects) {
               if (Math.abs(labelX - r.x) < (labelW + r.w) / 2 &&
                   Math.abs(labelY - r.y) < (labelH + r.h) / 2) {
                 collision = true;
-                // 尝试向上偏移
-                labelY -= labelH + 4;
+                // 交替尝试上下左右偏移
+                if (offsetAttempts < 4) {
+                  labelY -= labelH + 4;
+                } else if (offsetAttempts < 8) {
+                  labelX = sp.screenX + (offsetAttempts % 2 === 0 ? 25 : -25);
+                  labelY = sp.screenY - sp.buildingScale * 38;
+                } else {
+                  labelX += (offsetAttempts % 2 === 0 ? 20 : -20);
+                  labelY -= labelH + 2;
+                }
                 offsetAttempts++;
                 break;
               }
             }
-          }
-          
-          // 如果垂直偏移不够，尝试水平偏移
-          if (collision) {
-            labelX = sp.screenX + (offsetAttempts % 2 === 0 ? 30 : -30);
-            labelY = sp.screenY - sp.buildingScale * 38;
           }
           
           labelRects.push({ x: labelX, y: labelY, w: labelW, h: labelH });
@@ -717,13 +719,13 @@
       }
 
       getBuildingScreenPos(building, centerX, centerY) {
-        const scale = (0.5 + (this.cameraDistance / 500) * 0.5) * 0.9;
+        const scale = (0.5 + (this.cameraDistance / 500) * 0.5) * 1.1;
         const rotatedX = building.x * Math.cos(this.cameraAngle) - building.z * Math.sin(this.cameraAngle);
         const rotatedZ = building.x * Math.sin(this.cameraAngle) + building.z * Math.cos(this.cameraAngle);
-        const perspective = Math.max(0.35, 1 - (rotatedZ + this.cameraHeight) / 800);
+        const perspective = Math.max(0.35, 1 - (rotatedZ + this.cameraHeight) / 1000);
         const screenX = centerX + rotatedX * scale * perspective;
         const screenY = centerY - (building.y || 0) * scale * perspective - rotatedZ * scale * 0.3 * perspective;
-        const buildingScale = Math.max(1.2, (building.scale || 1) * scale * perspective * 1.2);
+        const buildingScale = Math.max(1.0, (building.scale || 1) * scale * perspective * 1.0);
         return { screenX, screenY, buildingScale, perspective };
       }
 
