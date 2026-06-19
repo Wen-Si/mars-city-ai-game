@@ -424,8 +424,8 @@
         this.ctx = canvas.getContext('2d');
         this.buildings = [];
         this.cameraAngle = 0;
-        this.cameraHeight = 60;
-        this.cameraDistance = 400;
+        this.cameraHeight = 40;
+        this.cameraDistance = 450;
         this.targetAngle = 0;
         this.dustParticles = [];
         this.stars = [];
@@ -455,7 +455,7 @@
             const dx = e.clientX - this.lastMouseX;
             const dy = e.clientY - this.lastMouseY;
             this.targetAngle += dx * 0.005;
-            this.cameraHeight = Math.max(25, Math.min(120, this.cameraHeight - dy * 0.5));
+            this.cameraHeight = Math.max(20, Math.min(100, this.cameraHeight - dy * 0.4));
             this.lastMouseX = e.clientX;
             this.lastMouseY = e.clientY;
           }
@@ -466,7 +466,7 @@
 
         canvas.addEventListener('wheel', (e) => {
           e.preventDefault();
-          this.cameraDistance = Math.max(150, Math.min(900, this.cameraDistance + e.deltaY * 0.6));
+          this.cameraDistance = Math.max(180, Math.min(1000, this.cameraDistance + e.deltaY * 0.6));
         });
 
         // 初始化粒子
@@ -661,16 +661,16 @@
       drawBuilding(building, centerX, centerY) {
         const ctx = this.ctx;
         // 坐标映射：游戏坐标 ±300 → 屏幕坐标
-        const scale = (0.6 + (this.cameraDistance / 400) * 0.4) * 0.55;
+        const scale = (0.5 + (this.cameraDistance / 450) * 0.5) * 0.75;
 
         const rotatedX = building.x * Math.cos(this.cameraAngle) - building.z * Math.sin(this.cameraAngle);
         const rotatedZ = building.x * Math.sin(this.cameraAngle) + building.z * Math.cos(this.cameraAngle);
 
-        const perspective = Math.max(0.3, 1 - (rotatedZ + this.cameraHeight) / 500);
+        const perspective = Math.max(0.3, 1 - (rotatedZ + this.cameraHeight) / 600);
         const screenX = centerX + rotatedX * scale * perspective;
         const screenY = centerY - (building.y || 0) * scale * perspective - rotatedZ * scale * 0.3 * perspective;
 
-        const buildingScale = Math.max(2.0, (building.scale || 1) * scale * perspective * 2.0);
+        const buildingScale = Math.max(1.5, (building.scale || 1) * scale * perspective * 1.5);
         const color = CONFIG.buildingColors[building.type] || CONFIG.buildingColors['默认'];
 
         // 绘制建筑阴影
@@ -684,14 +684,17 @@
 
         // 标签：根据距离决定是否显示和大小
         if (building.showLabel) {
-          const fontSize = Math.max(10, 13 * perspective);
-          const alpha = Math.max(0.45, Math.min(1, perspective * 1.5));
+          const labelText = building.building.length > 10 
+            ? building.building.substring(0, 9) + '…' 
+            : building.building;
+          const fontSize = Math.max(9, 12 * perspective);
+          const alpha = Math.max(0.5, Math.min(1, perspective * 1.5));
           ctx.font = `bold ${fontSize}px "Noto Sans SC"`;
           ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
           ctx.textAlign = 'center';
-          ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
-          ctx.shadowBlur = 4;
-          ctx.fillText(building.building, screenX, screenY - buildingScale * 35);
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.85)';
+          ctx.shadowBlur = 5;
+          ctx.fillText(labelText, screenX, screenY - buildingScale * 38);
           ctx.shadowBlur = 0;
         }
       }
