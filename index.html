@@ -364,7 +364,7 @@
         <button class="btn" id="btn-next" onclick="game.nextStep()">下一步建造</button>
         <button class="btn btn-secondary" id="btn-auto" onclick="game.toggleAuto()">自动建造</button>
         <button class="btn btn-secondary" onclick="game.reset()">重置殖民地</button>
-        <div class="hint">建筑由智谱 GLM-4.5-Flash 实时决策生成。拖动鼠标旋转视角，滚轮缩放。</div>
+        <div class="hint">建筑由智谱 GLM-4.5-Flash 实时决策生成。广阔火星表面（±200坐标范围），拖动鼠标旋转视角，滚轮缩放。</div>
       </div>
 
       <div class="panel" style="flex:1; display:flex; flex-direction:column;">
@@ -399,7 +399,9 @@
       apiUrl: 'https://open.bigmodel.cn/api/paas/v4/chat/completions',
       model: 'glm-4.5-flash',
       maxTokens: 512,
-      cityRadius: 120,
+      cityRadius: 400,
+      coordRange: 200,
+      minSpacing: 35,
       buildingColors: {
         '能源设施': '#ffaa44',
         '生命支持': '#44aaff',
@@ -422,8 +424,8 @@
         this.ctx = canvas.getContext('2d');
         this.buildings = [];
         this.cameraAngle = 0;
-        this.cameraHeight = 45;
-        this.cameraDistance = 180;
+        this.cameraHeight = 80;
+        this.cameraDistance = 350;
         this.targetAngle = 0;
         this.dustParticles = [];
         this.stars = [];
@@ -453,7 +455,7 @@
             const dx = e.clientX - this.lastMouseX;
             const dy = e.clientY - this.lastMouseY;
             this.targetAngle += dx * 0.005;
-            this.cameraHeight = Math.max(20, Math.min(80, this.cameraHeight - dy * 0.3));
+            this.cameraHeight = Math.max(30, Math.min(150, this.cameraHeight - dy * 0.5));
             this.lastMouseX = e.clientX;
             this.lastMouseY = e.clientY;
           }
@@ -464,7 +466,7 @@
 
         canvas.addEventListener('wheel', (e) => {
           e.preventDefault();
-          this.cameraDistance = Math.max(80, Math.min(350, this.cameraDistance + e.deltaY * 0.3));
+          this.cameraDistance = Math.max(120, Math.min(800, this.cameraDistance + e.deltaY * 0.6));
         });
 
         // 初始化粒子
@@ -592,29 +594,29 @@
         const ctx = this.ctx;
         const centerX = this.width / 2;
         const centerY = this.height * 0.55;
-        const gridRadius = 150;
+        const gridRadius = 400;
 
-        // 绘制同心圆 - 增强可见性
-        ctx.strokeStyle = 'rgba(255, 180, 100, 0.35)';
-        ctx.lineWidth = 1.5;
+        // 绘制同心圆 - 大型城市网格
+        ctx.strokeStyle = 'rgba(255, 180, 100, 0.20)';
+        ctx.lineWidth = 1.2;
         
-        for (let r = 20; r <= gridRadius; r += 30) {
-          const perspectiveR = r * (1 - this.cameraHeight / 150);
+        for (let r = 30; r <= gridRadius; r += 50) {
+          const perspectiveR = r * (1 - this.cameraHeight / 300);
           ctx.beginPath();
           ctx.ellipse(centerX, centerY, perspectiveR, perspectiveR * 0.4, 0, 0, Math.PI * 2);
           ctx.stroke();
         }
 
-        // 绘制放射线 - 增强可见性
-        ctx.strokeStyle = 'rgba(255, 150, 80, 0.25)';
-        ctx.lineWidth = 1;
+        // 绘制放射线
+        ctx.strokeStyle = 'rgba(255, 150, 80, 0.15)';
+        ctx.lineWidth = 0.8;
         
-        for (let i = 0; i < 12; i++) {
-          const angle = (i / 12) * Math.PI * 2 + this.cameraAngle;
+        for (let i = 0; i < 16; i++) {
+          const angle = (i / 16) * Math.PI * 2 + this.cameraAngle;
           const x1 = centerX;
           const y1 = centerY;
-          const x2 = centerX + Math.cos(angle) * gridRadius * (1 - this.cameraHeight / 150);
-          const y2 = centerY + Math.sin(angle) * gridRadius * 0.4 * (1 - this.cameraHeight / 150);
+          const x2 = centerX + Math.cos(angle) * gridRadius * (1 - this.cameraHeight / 300);
+          const y2 = centerY + Math.sin(angle) * gridRadius * 0.4 * (1 - this.cameraHeight / 300);
 
           ctx.beginPath();
           ctx.moveTo(x1, y1);
@@ -658,37 +660,38 @@
 
       drawBuilding(building, centerX, centerY) {
         const ctx = this.ctx;
-        const scale = 0.6 + (this.cameraDistance / 350) * 0.4;
+        // 坐标映射：游戏坐标 ±200 → 屏幕坐标
+        const scale = (0.6 + (this.cameraDistance / 350) * 0.4) * 0.7;
 
-        // 3D投影
         const rotatedX = building.x * Math.cos(this.cameraAngle) - building.z * Math.sin(this.cameraAngle);
         const rotatedZ = building.x * Math.sin(this.cameraAngle) + building.z * Math.cos(this.cameraAngle);
 
-        const perspective = Math.max(0.5, 1 - (rotatedZ + this.cameraHeight) / 200);
+        const perspective = Math.max(0.35, 1 - (rotatedZ + this.cameraHeight) / 400);
         const screenX = centerX + rotatedX * scale * perspective;
         const screenY = centerY - (building.y || 0) * scale * perspective - rotatedZ * scale * 0.3 * perspective;
 
-        // 增大建筑基础尺寸
-        const buildingScale = Math.max(2, (building.scale || 1) * scale * perspective * 3);
+        const buildingScale = Math.max(2.5, (building.scale || 1) * scale * perspective * 2.5);
         const color = CONFIG.buildingColors[building.type] || CONFIG.buildingColors['默认'];
 
-        // 绘制建筑阴影 - 增大尺寸
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+        // 绘制建筑阴影
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
         ctx.beginPath();
-        ctx.ellipse(screenX, centerY + 5, buildingScale * 12, buildingScale * 5, 0, 0, Math.PI * 2);
+        ctx.ellipse(screenX, centerY + 5, buildingScale * 10, buildingScale * 4, 0, 0, Math.PI * 2);
         ctx.fill();
 
-        // 根据类型绘制不同形状
+        // 根据类型绘制
         this.drawBuildingByType(ctx, building, screenX, screenY, buildingScale, color);
 
-        // 绘制建筑名称标签 - 增大字体
+        // 标签：根据距离决定是否显示和大小
         if (building.showLabel) {
-          ctx.font = `${Math.max(14, 16 * perspective)}px "Noto Sans SC"`;
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+          const fontSize = Math.max(11, 14 * perspective);
+          const alpha = Math.max(0.4, Math.min(1, perspective * 1.5));
+          ctx.font = `bold ${fontSize}px "Noto Sans SC"`;
+          ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
           ctx.textAlign = 'center';
-          ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
-          ctx.shadowBlur = 4;
-          ctx.fillText(building.building, screenX, screenY - buildingScale * 35);
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
+          ctx.shadowBlur = 3;
+          ctx.fillText(building.building, screenX, screenY - buildingScale * 25);
           ctx.shadowBlur = 0;
         }
       }
@@ -962,18 +965,24 @@
       },
 
       buildPrompt() {
+        const existingCoords = this.buildings.map(b => 
+          `(${b.x},${b.z}) ${b.building}`).join(', ');
+        
         const summary = this.buildings.length === 0
-          ? '火星殖民地尚未建立，这是第一步。'
-          : `当前已建造 ${this.buildings.length} 个设施：\n` + this.buildings.slice(-8).map((b, i) =>
-              `${i+1}. ${b.building}（${b.type}）`).join('\n');
+          ? '火星殖民地尚未建立，这是第一步。请在原点(0,0)附近放置第一个设施。'
+          : `当前已建造 ${this.buildings.length} 个设施。\n已有建筑坐标：${existingCoords}\n`;
 
-        const system = `你是 ARES 火星城市规划 AI，负责在火星表面一步一步决策建造设施，建立自给自足的人类城市。
-你必须基于当前殖民地状态，选择最合理的下一步建筑。
-建筑类型必须是以下之一：能源设施、生命支持、居住区、研究中心、温室、工厂、交通设施、防御设施、存储设施、通讯设施。
-返回严格 JSON 格式，不要添加解释文字。坐标 x、z 以城市中心为原点，范围 -80 到 80，避免与已有建筑重叠。
-JSON 字段：building(建筑名), type(类型), reason(50字以内原因), x, z, scale(0.6-1.6)。`;
+        const system = `你是 ARES 火星城市规划 AI，负责在火星表面规划自给自足的人类城市。城市范围巨大（坐标 ±200），你必须在广袤的土地上合理布局。
 
-        const user = `第 ${this.step + 1} 步建造决策。\n${summary}\n当前人口 ${this.stats.population}，能源 ${this.stats.energy}，氧气 ${this.stats.oxygen}。请决定下一步建造什么，并返回 JSON。`;
+**核心规则：**
+1. 建筑类型：能源设施、生命支持、居住区、研究中心、温室、工厂、交通设施、防御设施、存储设施、通讯设施
+2. 坐标范围 x 和 z 均为 -200 到 200，充分利用广阔空间
+3. 每座建筑必须与已有建筑保持至少 35 单位距离，严禁重叠
+4. 同类设施应分散布局，形成多个功能区域
+5. 返回严格 JSON，不要添加解释文字
+6. JSON 字段：building(建筑名), type(类型), reason(50字以内原因), x, z, scale(0.8-1.5)`;
+
+        const user = `第 ${this.step + 1} 步建造决策。\n${summary}\n当前：人口 ${this.stats.population}，能源 ${this.stats.energy}，氧气 ${this.stats.oxygen}。\n请选择与已有建筑间距至少35的坐标，返回 JSON。`;
 
         return [
           { role: 'system', content: system },
@@ -988,10 +997,32 @@ JSON 字段：building(建筑名), type(类型), reason(50字以内原因), x, z
         const obj = JSON.parse(json);
         if (!obj.building || !obj.type) throw new Error('返回格式不正确');
         obj.step = this.step + 1;
-        obj.x = Math.max(-80, Math.min(80, obj.x || 0));
-        obj.z = Math.max(-80, Math.min(80, obj.z || 0));
-        obj.scale = Math.max(0.6, Math.min(1.6, obj.scale || 1));
+        obj.x = Math.max(-CONFIG.coordRange, Math.min(CONFIG.coordRange, obj.x || 0));
+        obj.z = Math.max(-CONFIG.coordRange, Math.min(CONFIG.coordRange, obj.z || 0));
+        obj.scale = Math.max(0.8, Math.min(1.5, obj.scale || 1));
+        
+        // 碰撞检测：如果与已有建筑太近，自动偏移
+        let attempts = 0;
+        const maxAttempts = 20;
+        while (this.isTooClose(obj) && attempts < maxAttempts) {
+          const angle = Math.random() * Math.PI * 2;
+          const dist = CONFIG.minSpacing + Math.random() * 40;
+          obj.x = Math.max(-CONFIG.coordRange, Math.min(CONFIG.coordRange, obj.x + Math.cos(angle) * dist));
+          obj.z = Math.max(-CONFIG.coordRange, Math.min(CONFIG.coordRange, obj.z + Math.sin(angle) * dist));
+          attempts++;
+        }
+        
         return obj;
+      },
+
+      isTooClose(plan) {
+        for (const b of this.buildings) {
+          const dx = plan.x - b.x;
+          const dz = plan.z - b.z;
+          const dist = Math.sqrt(dx * dx + dz * dz);
+          if (dist < CONFIG.minSpacing) return true;
+        }
+        return false;
       },
 
       applyPlan(plan) {
@@ -1074,7 +1105,7 @@ JSON 字段：building(建筑名), type(类型), reason(50字以内原因), x, z
           btn.textContent = '停止自动';
           btn.style.borderColor = 'var(--mars-red)';
           this.nextStep();
-          this.autoTimer = setInterval(() => this.nextStep(), 6000);
+          this.autoTimer = setInterval(() => this.nextStep(), 8000);
         } else {
           btn.textContent = '自动建造';
           btn.style.borderColor = '';
