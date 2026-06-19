@@ -934,7 +934,7 @@
         } catch (err) {
           console.error(err);
           showToast('AI 决策失败：' + err.message);
-          this.setStatus('决策失败');
+          this.setStatus('决策失败，请重试');
         } finally {
           this.processing = false;
           btn.disabled = false;
@@ -991,9 +991,23 @@
       },
 
       parsePlan(content) {
+        console.log('AI response:', content);
         let json = content;
+        // 尝试多种方式提取JSON
         const codeMatch = content.match(/```json\s*([\s\S]*?)```/);
         if (codeMatch) json = codeMatch[1];
+        // 尝试提取花括号内容
+        if (!json.includes('{')) {
+          const bracketMatch = content.match(/\{[\s\S]*\}/);
+          if (bracketMatch) json = bracketMatch[0];
+        }
+        // 清理可能的前缀后缀
+        json = json.trim();
+        const firstBrace = json.indexOf('{');
+        const lastBrace = json.lastIndexOf('}');
+        if (firstBrace >= 0 && lastBrace > firstBrace) {
+          json = json.substring(firstBrace, lastBrace + 1);
+        }
         const obj = JSON.parse(json);
         if (!obj.building || !obj.type) throw new Error('返回格式不正确');
         obj.step = this.step + 1;
