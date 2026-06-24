@@ -3,9 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com https://fonts.googleapis.com; img-src 'self' data: blob:; connect-src 'self' https://open.bigmodel.cn; object-src 'none'; base-uri 'self'; form-action 'self';">
   <title>火星城市 · AI 建造计划</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Noto+Sans+SC:wght@300;400;700&display=swap">
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Noto+Sans+SC:wght@300;400;700&display=swap');
 
     :root {
       --mars-red: #c1440e;
@@ -44,6 +47,7 @@
       width: 100vw;
       height: 100vh;
       display: block;
+      touch-action: none;
     }
 
     #ui {
@@ -54,17 +58,17 @@
       display: grid;
       grid-template-areas:
         "header header header"
-        "left center right" !important;
-      grid-template-columns: 320px 1fr 280px !important;
-      grid-template-rows: auto 1fr !important;
+        "left center right";
+      grid-template-columns: 320px 1fr 280px;
+      grid-template-rows: auto 1fr;
       gap: 16px;
       padding: 18px;
     }
 
-    .header { grid-area: header !important; }
-    .left-col { grid-area: left !important; display: flex; flex-direction: column; gap: 16px; }
-    .center-area { grid-area: center !important; pointer-events: none; min-width: 100px; }
-    .right-col { grid-area: right !important; display: flex; flex-direction: column; gap: 16px; }
+    .header { grid-area: header; }
+    .left-col { grid-area: left; display: flex; flex-direction: column; gap: 16px; }
+    .center-area { grid-area: center; pointer-events: none; min-width: 100px; }
+    .right-col { grid-area: right; display: flex; flex-direction: column; gap: 16px; }
 
     .panel {
       pointer-events: auto;
@@ -81,13 +85,12 @@
       box-shadow: 0 12px 40px rgba(193, 68, 14, 0.18), inset 0 0 0 1px rgba(255,255,255,0.05);
     }
 
-    /* 中央区域透明，让Canvas可见 */
     .center-area {
       pointer-events: none;
-      background: transparent !important;
-      border: none !important;
-      box-shadow: none !important;
-      backdrop-filter: none !important;
+      background: transparent;
+      border: none;
+      box-shadow: none;
+      backdrop-filter: none;
     }
 
     h1 {
@@ -230,6 +233,7 @@
     .log-reason {
       color: var(--sand);
       font-size: 12px;
+      word-break: break-word;
     }
 
     .building-card {
@@ -245,11 +249,13 @@
       color: var(--mars-light);
       font-size: 16px;
       margin-bottom: 6px;
+      word-break: break-word;
     }
 
     .building-card .meta {
       font-size: 12px;
       color: var(--sand);
+      line-height: 1.6;
     }
 
     .loader {
@@ -279,6 +285,8 @@
       transition: all 0.4s ease;
       z-index: 100;
       box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+      max-width: 80vw;
+      text-align: center;
     }
 
     .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
@@ -307,15 +315,15 @@
     ::-webkit-scrollbar-thumb { background: var(--mars-red); border-radius: 3px; }
 
     @media (max-width: 800px) {
-      #ui { 
-        grid-template-areas: 
+      #ui {
+        grid-template-areas:
           "header"
           "left"
-          "right" !important;
-        grid-template-columns: 1fr !important; 
-        grid-template-rows: auto auto auto !important; 
+          "right";
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto auto;
       }
-      .center-area { display: none !important; }
+      .center-area { display: none; }
       .panel { max-height: none; }
     }
   </style>
@@ -337,7 +345,6 @@
       </div>
     </div>
 
-    <!-- 中央空白区域，让Canvas可见 -->
     <div class="center-area"></div>
 
     <div class="left-col">
@@ -361,9 +368,9 @@
             <div class="stat-value" id="stat-oxygen">0</div>
           </div>
         </div>
-        <button class="btn" id="btn-next" onclick="game.nextStep()">下一步建造</button>
-        <button class="btn btn-secondary" id="btn-auto" onclick="game.toggleAuto()">自动建造</button>
-        <button class="btn btn-secondary" onclick="game.reset()">重置殖民地</button>
+        <button class="btn" id="btn-next">下一步建造</button>
+        <button class="btn btn-secondary" id="btn-auto">自动建造</button>
+        <button class="btn btn-secondary" id="btn-reset">重置殖民地</button>
         <div class="hint">建筑由智谱 GLM-4.5-Flash 实时决策生成。广阔火星表面（±300坐标范围），拖动鼠标旋转视角，滚轮缩放。</div>
       </div>
 
@@ -373,7 +380,6 @@
       </div>
     </div>
 
-    <!-- 右侧列 -->
     <div class="right-col">
       <div class="panel">
         <div class="subtitle" style="margin-bottom:8px;">当前计划</div>
@@ -393,632 +399,733 @@
   <div class="toast" id="toast"></div>
 
   <script>
-    // ============ 配置 ============
-    const CONFIG = {
-      apiKey: '325d6fa364954d2e871c30ba95b553bd.KBdQdqgJgELJBhnv',
-      apiUrl: 'https://open.bigmodel.cn/api/paas/v4/chat/completions',
-      model: 'glm-4.5-flash',
-      maxTokens: 512,
-      cityRadius: 600,
-      coordRange: 300,
-      minSpacing: 60,
-      buildingColors: {
-        '能源设施': '#ffaa44',
-        '生命支持': '#44aaff',
-        '居住区': '#eeeeee',
-        '研究中心': '#cc77ff',
-        '温室': '#55cc88',
-        '工厂': '#888899',
-        '交通设施': '#ff6644',
-        '防御设施': '#cc3333',
-        '存储设施': '#ddbb77',
-        '通讯设施': '#66ddff',
-        '默认': '#cccccc'
+    (function() {
+      'use strict';
+
+      // ============ 安全工具函数 ============
+      function escapeHtml(str) {
+        if (str === null || str === undefined) return '';
+        const div = document.createElement('div');
+        div.textContent = String(str);
+        return div.innerHTML;
       }
-    };
 
-    // ============ Canvas 2D 渲染器 ============
-    class MarsCityRenderer {
-      constructor(canvas) {
-        this.canvas = canvas;
-        this.ctx = canvas.getContext('2d');
-        this.buildings = [];
-        this.cameraAngle = 0;
-        this.cameraHeight = 35;
-        this.cameraDistance = 500;
-        this.targetAngle = 0;
-        this.dustParticles = [];
-        this.stars = [];
-        this.time = 0;
-        this.animationId = null;
-        this.width = window.innerWidth;
-        this.height = window.innerHeight;
+      function sanitizeNumber(val, min, max, defaultValue) {
+        const num = Number(val);
+        if (isNaN(num) || !isFinite(num)) return defaultValue;
+        return Math.max(min, Math.min(max, num));
+      }
 
-        // 立即设置Canvas尺寸
-        this.setupCanvas();
-        
-        window.addEventListener('resize', () => this.setupCanvas());
+      function sanitizeString(str, maxLength) {
+          if (str === null || str === undefined) return '';
+          // 先移除控制字符，再进行HTML转义（结合textContent使用提供纵深防御）
+          const s = String(str)
+            .replace(/[\x00-\x1F\x7F\u202E\u202D\u200E\u200F]/g, '') // 移除控制字符和双向文本控制符
+            .replace(/[<>"'&]/g, function(ch) {
+              const entities = { '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '&': '&amp;' };
+              return entities[ch];
+            });
+          return maxLength ? s.substring(0, maxLength) : s;
+        }
 
-        // 鼠标交互
-        this.isDragging = false;
-        this.lastMouseX = 0;
-        this.lastMouseY = 0;
+      // ============ 配置 ============
+      const CONFIG = Object.freeze({
+        // 注意：这是纯前端Demo应用，API Key直接嵌入客户端是已知架构限制
+        // 生产环境应通过后端代理转发API请求，前端不接触密钥
+        // CSP connect-src已限制仅能向open.bigmodel.cn发送请求，部分缓解密钥滥用风险
+        apiKey: '325d6fa364954d2e871c30ba95b553bd.KBdQdqgJgELJBhnv',
+        apiUrl: 'https://open.bigmodel.cn/api/paas/v4/chat/completions',
+        model: 'glm-4.5-flash',
+        maxTokens: 512,
+        cityRadius: 600,
+        coordRange: 300,
+        minSpacing: 60,
+        requestTimeout: 30000,
+        maxBuildings: 200,
+        buildingColors: Object.freeze({
+          '能源设施': '#ffaa44',
+          '生命支持': '#44aaff',
+          '居住区': '#eeeeee',
+          '研究中心': '#cc77ff',
+          '温室': '#55cc88',
+          '工厂': '#888899',
+          '交通设施': '#ff6644',
+          '防御设施': '#cc3333',
+          '存储设施': '#ddbb77',
+          '通讯设施': '#66ddff',
+          '默认': '#cccccc'
+        }),
+        allowedTypes: Object.freeze([
+          '能源设施', '生命支持', '居住区', '研究中心',
+          '温室', '工厂', '交通设施', '防御设施', '存储设施', '通讯设施', '默认'
+        ])
+      });
 
-        canvas.addEventListener('mousedown', (e) => {
-          this.isDragging = true;
-          this.lastMouseX = e.clientX;
-          this.lastMouseY = e.clientY;
-        });
+      // ============ DOM 缓存 ============
+      const DOM = {};
+      function cacheDOM() {
+        DOM.canvas = document.getElementById('game-canvas');
+        DOM.log = document.getElementById('log');
+        DOM.buildingList = document.getElementById('building-list');
+        DOM.currentPlan = document.getElementById('current-plan');
+        DOM.statusText = document.getElementById('status-text');
+        DOM.solCounter = document.getElementById('sol-counter');
+        DOM.statBuildings = document.getElementById('stat-buildings');
+        DOM.statPopulation = document.getElementById('stat-population');
+        DOM.statEnergy = document.getElementById('stat-energy');
+        DOM.statOxygen = document.getElementById('stat-oxygen');
+        DOM.btnNext = document.getElementById('btn-next');
+        DOM.btnAuto = document.getElementById('btn-auto');
+        DOM.btnReset = document.getElementById('btn-reset');
+        DOM.toast = document.getElementById('toast');
+      }
 
-        canvas.addEventListener('mousemove', (e) => {
-          if (this.isDragging) {
-            const dx = e.clientX - this.lastMouseX;
-            const dy = e.clientY - this.lastMouseY;
-            this.targetAngle += dx * 0.005;
-            this.cameraHeight = Math.max(20, Math.min(100, this.cameraHeight - dy * 0.4));
+      // ============ Canvas 2D 渲染器 ============
+      class MarsCityRenderer {
+        constructor(canvas) {
+          this.canvas = canvas;
+          this.ctx = canvas.getContext('2d');
+          this.buildings = [];
+          this.cameraAngle = 0;
+          this.cameraHeight = 35;
+          this.cameraDistance = 500;
+          this.targetAngle = 0;
+          this.dustParticles = [];
+          this.stars = [];
+          this.time = 0;
+          this.animationId = null;
+          this.width = window.innerWidth;
+          this.height = window.innerHeight;
+          this.activeAnimations = new Set();
+          this._eventListeners = []; // 跟踪事件监听器以便清理
+
+          this.setupCanvas();
+
+          // 保存resize处理器引用
+          this._onResize = () => this.setupCanvas();
+          window.addEventListener('resize', this._onResize);
+          this._eventListeners.push({ target: window, type: 'resize', fn: this._onResize });
+
+          this.isDragging = false;
+          this.lastMouseX = 0;
+          this.lastMouseY = 0;
+
+          this._onMouseDown = (e) => {
+            this.isDragging = true;
             this.lastMouseX = e.clientX;
             this.lastMouseY = e.clientY;
+          };
+          canvas.addEventListener('mousedown', this._onMouseDown);
+          this._eventListeners.push({ target: canvas, type: 'mousedown', fn: this._onMouseDown });
+
+          this._onMouseMove = (e) => {
+            if (this.isDragging) {
+              const dx = e.clientX - this.lastMouseX;
+              const dy = e.clientY - this.lastMouseY;
+              this.targetAngle += dx * 0.005;
+              this.cameraHeight = Math.max(20, Math.min(100, this.cameraHeight - dy * 0.4));
+              this.lastMouseX = e.clientX;
+              this.lastMouseY = e.clientY;
+            }
+          };
+          canvas.addEventListener('mousemove', this._onMouseMove);
+          this._eventListeners.push({ target: canvas, type: 'mousemove', fn: this._onMouseMove });
+
+          this._onMouseUp = () => { this.isDragging = false; };
+          this._onMouseLeave = () => { this.isDragging = false; };
+          canvas.addEventListener('mouseup', this._onMouseUp);
+          this._eventListeners.push({ target: canvas, type: 'mouseup', fn: this._onMouseUp });
+          canvas.addEventListener('mouseleave', this._onMouseLeave);
+          this._eventListeners.push({ target: canvas, type: 'mouseleave', fn: this._onMouseLeave });
+
+          this._onWheel = (e) => {
+            e.preventDefault();
+            this.cameraDistance = Math.max(180, Math.min(1000, this.cameraDistance + e.deltaY * 0.6));
+          };
+          canvas.addEventListener('wheel', this._onWheel, { passive: false });
+          this._eventListeners.push({ target: canvas, type: 'wheel', fn: this._onWheel, opts: { passive: false } });
+
+          this.initParticles();
+          this.initStars();
+
+          this.startAnimation();
+        }
+
+        setupCanvas() {
+          const dpr = window.devicePixelRatio || 1;
+          this.width = window.innerWidth;
+          this.height = window.innerHeight;
+
+          this.canvas.width = this.width * dpr;
+          this.canvas.height = this.height * dpr;
+
+          this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+          this.ctx.scale(dpr, dpr);
+
+          this.initParticles();
+          this.initStars();
+        }
+
+        initParticles() {
+          this.dustParticles = [];
+          for (let i = 0; i < 80; i++) {
+            this.dustParticles.push({
+              x: Math.random() * this.width,
+              y: Math.random() * this.height,
+              size: Math.random() * 2 + 0.5,
+              speed: Math.random() * 0.3 + 0.1,
+              opacity: Math.random() * 0.3 + 0.1
+            });
           }
-        });
+        }
 
-        canvas.addEventListener('mouseup', () => this.isDragging = false);
-        canvas.addEventListener('mouseleave', () => this.isDragging = false);
+        initStars() {
+          this.stars = [];
+          for (let i = 0; i < 200; i++) {
+            this.stars.push({
+              x: Math.random() * this.width,
+              y: Math.random() * this.height * 0.6,
+              size: Math.random() * 1.5 + 0.3,
+              twinkle: Math.random() * Math.PI * 2,
+              speed: Math.random() * 0.02 + 0.01
+            });
+          }
+        }
 
-        canvas.addEventListener('wheel', (e) => {
-          e.preventDefault();
-          this.cameraDistance = Math.max(180, Math.min(1000, this.cameraDistance + e.deltaY * 0.6));
-        });
+        destroy() {
+          if (this.animationId) {
+            cancelAnimationFrame(this.animationId);
+            this.animationId = null;
+          }
+          this.activeAnimations.clear();
+          this.buildings = [];
+          // 移除所有跟踪的事件监听器
+          if (this._eventListeners) {
+            for (const listener of this._eventListeners) {
+              try {
+                listener.target.removeEventListener(listener.type, listener.fn, listener.opts);
+              } catch (e) { /* 忽略清理错误 */ }
+            }
+            this._eventListeners = [];
+          }
+        }
 
-        // 初始化粒子
-        this.initParticles();
-        this.initStars();
-        
-        // 立即开始动画
-        console.log('MarsCityRenderer initialized, starting animation...');
-        this.startAnimation();
-      }
+        animate() {
+          this.time += 0.016;
+          this.cameraAngle += (this.targetAngle - this.cameraAngle) * 0.05;
+          this.render();
+          this.animationId = requestAnimationFrame(() => this.animate());
+        }
 
-      setupCanvas() {
-        const dpr = window.devicePixelRatio || 1;
-        this.width = window.innerWidth;
-        this.height = window.innerHeight;
-        
-        // 设置Canvas的实际像素尺寸
-        this.canvas.width = this.width * dpr;
-        this.canvas.height = this.height * dpr;
-        
-        // 重置变换矩阵后再缩放
-        this.ctx.setTransform(1, 0, 0, 1, 0, 0);
-        this.ctx.scale(dpr, dpr);
-        
-        // 重新初始化粒子位置
-        this.initParticles();
-        this.initStars();
-        
-        console.log('Canvas setup:', this.width, 'x', this.height, 'dpr:', dpr);
-      }
+        startAnimation() {
+          if (this.animationId) cancelAnimationFrame(this.animationId);
+          this.animate();
+        }
 
-      initParticles() {
-        this.dustParticles = [];
-        for (let i = 0; i < 80; i++) {
-          this.dustParticles.push({
-            x: Math.random() * this.width,
-            y: Math.random() * this.height,
-            size: Math.random() * 2 + 0.5,
-            speed: Math.random() * 0.3 + 0.1,
-            opacity: Math.random() * 0.3 + 0.1
+        render() {
+          if (!this.ctx || !this.width || !this.height) return;
+
+          const ctx = this.ctx;
+          const w = this.width;
+          const h = this.height;
+
+          ctx.fillStyle = '#0d0a09';
+          ctx.fillRect(0, 0, w, h);
+
+          this.stars.forEach(star => {
+            star.twinkle += star.speed;
+            const opacity = 0.3 + Math.sin(star.twinkle) * 0.3;
+            ctx.fillStyle = `rgba(255, 245, 230, ${opacity})`;
+            ctx.beginPath();
+            ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+            ctx.fill();
           });
-        }
-      }
 
-      initStars() {
-        this.stars = [];
-        for (let i = 0; i < 200; i++) {
-          this.stars.push({
-            x: Math.random() * this.width,
-            y: Math.random() * this.height * 0.6,
-            size: Math.random() * 1.5 + 0.3,
-            twinkle: Math.random() * Math.PI * 2,
-            speed: Math.random() * 0.02 + 0.01
+          const gradient = ctx.createLinearGradient(0, h * 0.35, 0, h);
+          gradient.addColorStop(0, '#2a1510');
+          gradient.addColorStop(0.3, '#4a1910');
+          gradient.addColorStop(0.6, '#6a2515');
+          gradient.addColorStop(1, '#8a3018');
+          ctx.fillStyle = gradient;
+          ctx.fillRect(0, h * 0.35, w, h * 0.65);
+
+          this.drawGroundGrid();
+
+          this.dustParticles.forEach(p => {
+            p.x += p.speed;
+            if (p.x > w) p.x = 0;
+            ctx.fillStyle = `rgba(212, 165, 116, ${p.opacity})`;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+            ctx.fill();
           });
+
+          this.drawBuildings();
+          this.drawSunGlow();
         }
-      }
 
-      animate() {
-        this.time += 0.016;
-        this.cameraAngle += (this.targetAngle - this.cameraAngle) * 0.05;
-        this.render();
-        this.animationId = requestAnimationFrame(() => this.animate());
-      }
+        drawGroundGrid() {
+          const ctx = this.ctx;
+          const centerX = this.width / 2;
+          const centerY = this.height * 0.55;
+          const gridRadius = 600;
 
-      startAnimation() {
-        if (this.animationId) cancelAnimationFrame(this.animationId);
-        console.log('Starting animation loop...');
-        this.animate();
-      }
+          ctx.strokeStyle = 'rgba(255, 180, 100, 0.20)';
+          ctx.lineWidth = 1.2;
 
-      render() {
-        if (!this.ctx || !this.width || !this.height) {
-          console.warn('Render skipped: invalid state');
-          return;
+          for (let r = 40; r <= gridRadius; r += 60) {
+            const perspectiveR = r * (1 - this.cameraHeight / 300);
+            ctx.beginPath();
+            ctx.ellipse(centerX, centerY, perspectiveR, perspectiveR * 0.4, 0, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+
+          ctx.strokeStyle = 'rgba(255, 150, 80, 0.15)';
+          ctx.lineWidth = 0.8;
+
+          for (let i = 0; i < 20; i++) {
+            const angle = (i / 20) * Math.PI * 2 + this.cameraAngle;
+            const x1 = centerX;
+            const y1 = centerY;
+            const x2 = centerX + Math.cos(angle) * gridRadius * (1 - this.cameraHeight / 300);
+            const y2 = centerY + Math.sin(angle) * gridRadius * 0.4 * (1 - this.cameraHeight / 300);
+
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.stroke();
+          }
         }
-        
-        const ctx = this.ctx;
-        const w = this.width;
-        const h = this.height;
 
-        // 清空并绘制背景
-        ctx.fillStyle = '#0d0a09';
-        ctx.fillRect(0, 0, w, h);
+        drawSunGlow() {
+          const ctx = this.ctx;
+          const sunX = this.width * 0.75;
+          const sunY = this.height * 0.15;
 
-        // 绘制星空
-        this.stars.forEach(star => {
-          star.twinkle += star.speed;
-          const opacity = 0.3 + Math.sin(star.twinkle) * 0.3;
-          ctx.fillStyle = `rgba(255, 245, 230, ${opacity})`;
+          const gradient = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, 80);
+          gradient.addColorStop(0, 'rgba(255, 200, 100, 0.4)');
+          gradient.addColorStop(0.5, 'rgba(255, 150, 80, 0.15)');
+          gradient.addColorStop(1, 'rgba(255, 100, 50, 0)');
+
+          ctx.fillStyle = gradient;
           ctx.beginPath();
-          ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+          ctx.arc(sunX, sunY, 80, 0, Math.PI * 2);
           ctx.fill();
-        });
-
-        // 绘制火星地平线渐变
-        const gradient = ctx.createLinearGradient(0, h * 0.35, 0, h);
-        gradient.addColorStop(0, '#2a1510');
-        gradient.addColorStop(0.3, '#4a1910');
-        gradient.addColorStop(0.6, '#6a2515');
-        gradient.addColorStop(1, '#8a3018');
-        ctx.fillStyle = gradient;
-        ctx.fillRect(0, h * 0.35, w, h * 0.65);
-
-        // 绘制地面网格
-        this.drawGroundGrid();
-
-        // 绘制尘雾粒子
-        this.dustParticles.forEach(p => {
-          p.x += p.speed;
-          if (p.x > w) p.x = 0;
-          ctx.fillStyle = `rgba(212, 165, 116, ${p.opacity})`;
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-          ctx.fill();
-        });
-
-        // 绘制建筑
-        this.drawBuildings();
-
-        // 绘制太阳光晕
-        this.drawSunGlow();
-      }
-
-      drawGroundGrid() {
-        const ctx = this.ctx;
-        const centerX = this.width / 2;
-        const centerY = this.height * 0.55;
-        const gridRadius = 600;
-
-        // 绘制同心圆 - 大型城市网格
-        ctx.strokeStyle = 'rgba(255, 180, 100, 0.20)';
-        ctx.lineWidth = 1.2;
-        
-        for (let r = 40; r <= gridRadius; r += 60) {
-          const perspectiveR = r * (1 - this.cameraHeight / 300);
-          ctx.beginPath();
-          ctx.ellipse(centerX, centerY, perspectiveR, perspectiveR * 0.4, 0, 0, Math.PI * 2);
-          ctx.stroke();
         }
 
-        // 绘制放射线
-        ctx.strokeStyle = 'rgba(255, 150, 80, 0.15)';
-        ctx.lineWidth = 0.8;
-        
-        for (let i = 0; i < 20; i++) {
-          const angle = (i / 20) * Math.PI * 2 + this.cameraAngle;
-          const x1 = centerX;
-          const y1 = centerY;
-          const x2 = centerX + Math.cos(angle) * gridRadius * (1 - this.cameraHeight / 300);
-          const y2 = centerY + Math.sin(angle) * gridRadius * 0.4 * (1 - this.cameraHeight / 300);
+        drawBuildings() {
+          const ctx = this.ctx;
+          const centerX = this.width / 2;
+          const centerY = this.height * 0.55;
 
-          ctx.beginPath();
-          ctx.moveTo(x1, y1);
-          ctx.lineTo(x2, y2);
-          ctx.stroke();
-        }
-      }
+          const sortedBuildings = [...this.buildings].sort((a, b) => {
+            const distA = Math.sqrt(a.x * a.x + a.z * a.z);
+            const distB = Math.sqrt(b.x * b.x + b.z * b.z);
+            return distB - distA;
+          });
 
-      drawSunGlow() {
-        const ctx = this.ctx;
-        const sunX = this.width * 0.75;
-        const sunY = this.height * 0.15;
+          const screenPositions = [];
+          sortedBuildings.forEach(b => {
+            const pos = this.getBuildingScreenPos(b, centerX, centerY);
+            screenPositions.push({ building: b, ...pos });
+          });
 
-        const gradient = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, 80);
-        gradient.addColorStop(0, 'rgba(255, 200, 100, 0.4)');
-        gradient.addColorStop(0.5, 'rgba(255, 150, 80, 0.15)');
-        gradient.addColorStop(1, 'rgba(255, 100, 50, 0)');
+          screenPositions.forEach(sp => {
+            this.drawBuildingShape(sp.building, sp.screenX, sp.screenY, sp.buildingScale, centerY);
+          });
 
-        ctx.fillStyle = gradient;
-        ctx.beginPath();
-        ctx.arc(sunX, sunY, 80, 0, Math.PI * 2);
-        ctx.fill();
-      }
+          const labelRects = [];
+          screenPositions.forEach(sp => {
+            if (!sp.building.showLabel) return;
+            const safeName = sanitizeString(sp.building.building, 20);
+            const labelText = safeName.length > 8
+              ? safeName.substring(0, 7) + '…'
+              : safeName;
+            const fontSize = Math.max(9, 12 * sp.perspective);
+            const alpha = Math.max(0.5, Math.min(1, sp.perspective * 1.5));
 
-      drawBuildings() {
-        const ctx = this.ctx;
-        const centerX = this.width / 2;
-        const centerY = this.height * 0.55;
+            ctx.font = `bold ${fontSize}px "Noto Sans SC"`;
+            const textWidth = ctx.measureText(labelText).width;
+            let labelX = sp.screenX;
+            let labelY = sp.screenY - sp.buildingScale * 38;
 
-        const sortedBuildings = [...this.buildings].sort((a, b) => {
-          const distA = Math.sqrt(a.x * a.x + a.z * a.z);
-          const distB = Math.sqrt(b.x * b.x + b.z * b.z);
-          return distB - distA;
-        });
+            const labelH = fontSize + 4;
+            const labelW = textWidth + 10;
+            let collision = true;
+            let offsetAttempts = 0;
 
-        // 第一遍：计算所有建筑屏幕位置
-        const screenPositions = [];
-        sortedBuildings.forEach(b => {
-          const pos = this.getBuildingScreenPos(b, centerX, centerY);
-          screenPositions.push({ building: b, ...pos });
-        });
-
-        // 第二遍：绘制建筑（先画远的）
-        screenPositions.forEach(sp => {
-          this.drawBuildingShape(sp.building, sp.screenX, sp.screenY, sp.buildingScale, centerY);
-        });
-
-        // 第三遍：绘制标签（带碰撞检测）
-        const labelRects = [];
-        screenPositions.forEach(sp => {
-          if (!sp.building.showLabel) return;
-          const labelText = sp.building.building.length > 10
-            ? sp.building.building.substring(0, 9) + '…'
-            : sp.building.building;
-          const fontSize = Math.max(9, 12 * sp.perspective);
-          const alpha = Math.max(0.5, Math.min(1, sp.perspective * 1.5));
-          
-          ctx.font = `bold ${fontSize}px "Noto Sans SC"`;
-          const textWidth = ctx.measureText(labelText).width;
-          let labelX = sp.screenX;
-          let labelY = sp.screenY - sp.buildingScale * 38;
-          
-          // 碰撞检测：检查是否与已有标签重叠
-          const labelH = fontSize + 4;
-          const labelW = textWidth + 10;
-          let collision = true;
-          let offsetAttempts = 0;
-          
-          while (collision && offsetAttempts < 12) {
-            collision = false;
-            for (const r of labelRects) {
-              if (Math.abs(labelX - r.x) < (labelW + r.w) / 2 &&
-                  Math.abs(labelY - r.y) < (labelH + r.h) / 2) {
-                collision = true;
-                // 交替尝试上下左右偏移
-                if (offsetAttempts < 4) {
-                  labelY -= labelH + 4;
-                } else if (offsetAttempts < 8) {
-                  labelX = sp.screenX + (offsetAttempts % 2 === 0 ? 25 : -25);
-                  labelY = sp.screenY - sp.buildingScale * 38;
-                } else {
-                  labelX += (offsetAttempts % 2 === 0 ? 20 : -20);
-                  labelY -= labelH + 2;
+            while (collision && offsetAttempts < 12) {
+              collision = false;
+              for (const r of labelRects) {
+                if (Math.abs(labelX - r.x) < (labelW + r.w) / 2 &&
+                    Math.abs(labelY - r.y) < (labelH + r.h) / 2) {
+                  collision = true;
+                  if (offsetAttempts < 4) {
+                    labelY -= labelH + 4;
+                  } else if (offsetAttempts < 8) {
+                    labelX = sp.screenX + (offsetAttempts % 2 === 0 ? 25 : -25);
+                    labelY = sp.screenY - sp.buildingScale * 38;
+                  } else {
+                    labelX += (offsetAttempts % 2 === 0 ? 20 : -20);
+                    labelY -= labelH + 2;
+                  }
+                  offsetAttempts++;
+                  break;
                 }
-                offsetAttempts++;
-                break;
               }
             }
+
+            labelRects.push({ x: labelX, y: labelY, w: labelW, h: labelH });
+
+            ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+            ctx.textAlign = 'center';
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.85)';
+            ctx.shadowBlur = 5;
+            ctx.fillText(labelText, labelX, labelY);
+            ctx.shadowBlur = 0;
+          });
+        }
+
+        getBuildingScreenPos(building, centerX, centerY) {
+          const scale = (0.5 + (this.cameraDistance / 500) * 0.5) * 1.1;
+          const rotatedX = building.x * Math.cos(this.cameraAngle) - building.z * Math.sin(this.cameraAngle);
+          const rotatedZ = building.x * Math.sin(this.cameraAngle) + building.z * Math.cos(this.cameraAngle);
+          const perspective = Math.max(0.35, 1 - (rotatedZ + this.cameraHeight) / 1000);
+          const screenX = centerX + rotatedX * scale * perspective;
+          const screenY = centerY - (building.y || 0) * scale * perspective - rotatedZ * scale * 0.3 * perspective;
+          const buildingScale = Math.max(1.0, (building.scale || 1) * scale * perspective * 1.0);
+          return { screenX, screenY, buildingScale, perspective };
+        }
+
+        drawBuildingShape(building, screenX, screenY, buildingScale, centerY) {
+          const ctx = this.ctx;
+          const safeType = CONFIG.allowedTypes.includes(building.type) ? building.type : '默认';
+          const color = CONFIG.buildingColors[safeType];
+
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+          ctx.beginPath();
+          ctx.ellipse(screenX, centerY + 5, buildingScale * 10, buildingScale * 4, 0, 0, Math.PI * 2);
+          ctx.fill();
+
+          this.drawBuildingByType(ctx, building, screenX, screenY, buildingScale, color);
+        }
+
+        drawBuildingByType(ctx, building, x, y, scale, color) {
+          const type = CONFIG.allowedTypes.includes(building.type) ? building.type : '默认';
+
+          switch (type) {
+            case '能源设施':
+              this.drawEnergyFacility(ctx, x, y, scale, color);
+              break;
+            case '生命支持':
+            case '居住区':
+              this.drawHabitat(ctx, x, y, scale, color, building._seed);
+              break;
+            case '研究中心':
+            case '通讯设施':
+            case '防御设施':
+              this.drawTower(ctx, x, y, scale, color);
+              break;
+            case '温室':
+              this.drawGreenhouse(ctx, x, y, scale, color, building._seed);
+              break;
+            case '工厂':
+              this.drawFactory(ctx, x, y, scale, color);
+              break;
+            case '交通设施':
+              this.drawRoad(ctx, x, y, scale, color);
+              break;
+            default:
+              this.drawDefaultBuilding(ctx, x, y, scale, color);
           }
-          
-          labelRects.push({ x: labelX, y: labelY, w: labelW, h: labelH });
-          
-          ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
-          ctx.textAlign = 'center';
-          ctx.shadowColor = 'rgba(0, 0, 0, 0.85)';
-          ctx.shadowBlur = 5;
-          ctx.fillText(labelText, labelX, labelY);
+        }
+
+        // 基于种子的伪随机数生成器，避免每帧闪烁
+        seededRandom(seed) {
+          let s = seed | 0;
+          return function() {
+            s = (s * 1664525 + 1013904223) & 0xFFFFFFFF;
+            return ((s >>> 0) / 0xFFFFFFFF);
+          };
+        }
+
+        drawEnergyFacility(ctx, x, y, scale, color) {
+          ctx.fillStyle = '#555566';
+          ctx.beginPath();
+          ctx.moveTo(x - scale * 12, y);
+          ctx.lineTo(x + scale * 12, y);
+          ctx.lineTo(x + scale * 10, y - scale * 8);
+          ctx.lineTo(x - scale * 10, y - scale * 8);
+          ctx.closePath();
+          ctx.fill();
+
+          ctx.fillStyle = color;
+          ctx.shadowColor = color;
+          ctx.shadowBlur = 15;
+          ctx.beginPath();
+          ctx.moveTo(x - scale * 6, y - scale * 8);
+          ctx.lineTo(x + scale * 6, y - scale * 8);
+          ctx.lineTo(x, y - scale * 30);
+          ctx.closePath();
+          ctx.fill();
           ctx.shadowBlur = 0;
-        });
-      }
 
-      getBuildingScreenPos(building, centerX, centerY) {
-        const scale = (0.5 + (this.cameraDistance / 500) * 0.5) * 1.1;
-        const rotatedX = building.x * Math.cos(this.cameraAngle) - building.z * Math.sin(this.cameraAngle);
-        const rotatedZ = building.x * Math.sin(this.cameraAngle) + building.z * Math.cos(this.cameraAngle);
-        const perspective = Math.max(0.35, 1 - (rotatedZ + this.cameraHeight) / 1000);
-        const screenX = centerX + rotatedX * scale * perspective;
-        const screenY = centerY - (building.y || 0) * scale * perspective - rotatedZ * scale * 0.3 * perspective;
-        const buildingScale = Math.max(1.0, (building.scale || 1) * scale * perspective * 1.0);
-        return { screenX, screenY, buildingScale, perspective };
-      }
-
-      drawBuildingShape(building, screenX, screenY, buildingScale, centerY) {
-        const ctx = this.ctx;
-        const color = CONFIG.buildingColors[building.type] || CONFIG.buildingColors['默认'];
-
-        // 绘制建筑阴影
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
-        ctx.beginPath();
-        ctx.ellipse(screenX, centerY + 5, buildingScale * 10, buildingScale * 4, 0, 0, Math.PI * 2);
-        ctx.fill();
-
-        this.drawBuildingByType(ctx, building, screenX, screenY, buildingScale, color);
-      }
-
-      drawBuildingByType(ctx, building, x, y, scale, color) {
-        const type = building.type;
-
-        switch (type) {
-          case '能源设施':
-            this.drawEnergyFacility(ctx, x, y, scale, color);
-            break;
-          case '生命支持':
-          case '居住区':
-            this.drawHabitat(ctx, x, y, scale, color);
-            break;
-          case '研究中心':
-          case '通讯设施':
-          case '防御设施':
-            this.drawTower(ctx, x, y, scale, color);
-            break;
-          case '温室':
-            this.drawGreenhouse(ctx, x, y, scale, color);
-            break;
-          case '工厂':
-            this.drawFactory(ctx, x, y, scale, color);
-            break;
-          case '交通设施':
-            this.drawRoad(ctx, x, y, scale, color);
-            break;
-          default:
-            this.drawDefaultBuilding(ctx, x, y, scale, color);
-        }
-      }
-
-      drawEnergyFacility(ctx, x, y, scale, color) {
-        // 基座
-        ctx.fillStyle = '#555566';
-        ctx.beginPath();
-        ctx.moveTo(x - scale * 12, y);
-        ctx.lineTo(x + scale * 12, y);
-        ctx.lineTo(x + scale * 10, y - scale * 8);
-        ctx.lineTo(x - scale * 10, y - scale * 8);
-        ctx.closePath();
-        ctx.fill();
-
-        // 核心
-        ctx.fillStyle = color;
-        ctx.shadowColor = color;
-        ctx.shadowBlur = 15;
-        ctx.beginPath();
-        ctx.moveTo(x - scale * 6, y - scale * 8);
-        ctx.lineTo(x + scale * 6, y - scale * 8);
-        ctx.lineTo(x, y - scale * 30);
-        ctx.closePath();
-        ctx.fill();
-        ctx.shadowBlur = 0;
-
-        // 发光环
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.ellipse(x, y - scale * 15, scale * 10, scale * 4, 0, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-
-      drawHabitat(ctx, x, y, scale, color) {
-        // 穹顶
-        ctx.fillStyle = 'rgba(200, 200, 210, 0.7)';
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.ellipse(x, y - scale * 12, scale * 14, scale * 12, 0, Math.PI, 0);
-        ctx.fill();
-        ctx.stroke();
-
-        // 基座
-        ctx.fillStyle = '#777788';
-        ctx.beginPath();
-        ctx.ellipse(x, y, scale * 14, scale * 5, 0, 0, Math.PI * 2);
-        ctx.fill();
-
-        // 窗户发光点
-        for (let i = 0; i < 8; i++) {
-          const wx = x + (Math.random() - 0.5) * scale * 20;
-          const wy = y - scale * 5 - Math.random() * scale * 15;
-          ctx.fillStyle = 'rgba(255, 220, 150, 0.8)';
+          ctx.strokeStyle = color;
+          ctx.lineWidth = 2;
           ctx.beginPath();
-          ctx.arc(wx, wy, scale * 1.5, 0, Math.PI * 2);
-          ctx.fill();
+          ctx.ellipse(x, y - scale * 15, scale * 10, scale * 4, 0, 0, Math.PI * 2);
+          ctx.stroke();
         }
-      }
 
-      drawTower(ctx, x, y, scale, color) {
-        // 主体
-        ctx.fillStyle = color;
-        ctx.fillRect(x - scale * 6, y - scale * 35, scale * 12, scale * 35);
+        drawHabitat(ctx, x, y, scale, color, seed) {
+          const rng = this.seededRandom(seed || 12345);
 
-        // 顶部天线
-        ctx.fillStyle = '#ff3300';
-        ctx.shadowColor = '#ff2200';
-        ctx.shadowBlur = 10;
-        ctx.fillRect(x - scale * 1.5, y - scale * 45, scale * 3, scale * 12);
-        ctx.shadowBlur = 0;
-
-        // 横梁
-        ctx.fillStyle = '#aaaaaa';
-        ctx.fillRect(x - scale * 8, y - scale * 25, scale * 16, scale * 2);
-      }
-
-      drawGreenhouse(ctx, x, y, scale, color) {
-        // 主体框架
-        ctx.fillStyle = 'rgba(85, 204, 136, 0.4)';
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.rect(x - scale * 20, y - scale * 12, scale * 40, scale * 12);
-        ctx.fill();
-        ctx.stroke();
-
-        // 内部植物
-        for (let i = 0; i < 12; i++) {
-          const px = x - scale * 18 + Math.random() * scale * 36;
-          const py = y - scale * 2 - Math.random() * scale * 8;
-          ctx.fillStyle = '#33aa55';
+          ctx.fillStyle = 'rgba(200, 200, 210, 0.7)';
+          ctx.strokeStyle = color;
+          ctx.lineWidth = 2;
           ctx.beginPath();
-          ctx.arc(px, py, scale * 2, 0, Math.PI * 2);
+          ctx.ellipse(x, y - scale * 12, scale * 14, scale * 12, 0, Math.PI, 0);
           ctx.fill();
-        }
-      }
+          ctx.stroke();
 
-      drawFactory(ctx, x, y, scale, color) {
-        // 主体
-        ctx.fillStyle = color;
-        ctx.fillRect(x - scale * 18, y - scale * 15, scale * 36, scale * 15);
-
-        // 烟囱
-        ctx.fillStyle = '#555555';
-        ctx.fillRect(x + scale * 10, y - scale * 30, scale * 5, scale * 15);
-        ctx.fillRect(x - scale * 12, y - scale * 25, scale * 4, scale * 10);
-
-        // 烟雾效果
-        ctx.fillStyle = 'rgba(150, 150, 150, 0.3)';
-        for (let i = 0; i < 3; i++) {
+          ctx.fillStyle = '#777788';
           ctx.beginPath();
-          ctx.arc(x + scale * 12 + Math.sin(this.time * 2 + i) * scale * 3, y - scale * 35 - i * scale * 5, scale * 4 + i * scale * 2, 0, Math.PI * 2);
+          ctx.ellipse(x, y, scale * 14, scale * 5, 0, 0, Math.PI * 2);
           ctx.fill();
-        }
-      }
 
-      drawRoad(ctx, x, y, scale, color) {
-        ctx.fillStyle = '#333333';
-        ctx.fillRect(x - scale * 25, y - scale * 2, scale * 50, scale * 4);
-
-        // 中线
-        ctx.fillStyle = color;
-        ctx.fillRect(x - scale * 25, y - scale * 0.5, scale * 50, scale * 1);
-      }
-
-      drawDefaultBuilding(ctx, x, y, scale, color) {
-        ctx.fillStyle = color;
-        ctx.beginPath();
-        ctx.moveTo(x - scale * 10, y);
-        ctx.lineTo(x + scale * 10, y);
-        ctx.lineTo(x + scale * 8, y - scale * 20);
-        ctx.lineTo(x - scale * 8, y - scale * 20);
-        ctx.closePath();
-        ctx.fill();
-      }
-
-      addBuilding(building) {
-        const newBuilding = {
-          ...building,
-          y: 0,
-          showLabel: true,
-          animProgress: 0
-        };
-        this.buildings.push(newBuilding);
-        console.log('Building added:', building.building, 'at', building.x, building.z, 'Total buildings:', this.buildings.length);
-
-        // 建筑升起动画
-        const animateRise = () => {
-          newBuilding.animProgress += 0.03;
-          if (newBuilding.animProgress < 1) {
-            newBuilding.y = -20 * (1 - newBuilding.animProgress);
-            requestAnimationFrame(animateRise);
-          } else {
-            newBuilding.y = 0;
+          // 使用种子随机生成固定位置的窗户
+          for (let i = 0; i < 8; i++) {
+            const wx = x + (rng() - 0.5) * scale * 20;
+            const wy = y - scale * 5 - rng() * scale * 15;
+            ctx.fillStyle = 'rgba(255, 220, 150, 0.8)';
+            ctx.beginPath();
+            ctx.arc(wx, wy, scale * 1.5, 0, Math.PI * 2);
+            ctx.fill();
           }
-        };
-        animateRise();
-      }
-
-      clearBuildings() {
-        this.buildings = [];
-        console.log('Buildings cleared');
-      }
-    }
-
-    // ============ 游戏逻辑 ============
-    const canvas = document.getElementById('game-canvas');
-    window.renderer = new MarsCityRenderer(canvas);
-    const renderer = window.renderer;
-
-    window.game = {
-      step: 0,
-      auto: false,
-      autoTimer: null,
-      buildings: [],
-      stats: { population: 0, energy: 0, oxygen: 0 },
-      history: [],
-      processing: false,
-
-      reset() {
-        this.step = 0;
-        this.buildings = [];
-        this.stats = { population: 0, energy: 0, oxygen: 0 };
-        this.history = [];
-        this.auto = false;
-        clearInterval(this.autoTimer);
-        renderer.clearBuildings();
-        document.getElementById('log').innerHTML = '';
-        document.getElementById('building-list').innerHTML = '';
-        document.getElementById('current-plan').innerHTML = '<div class="name">—</div><div class="meta">暂无建造计划</div>';
-        this.updateStats();
-        this.setStatus('等待启动');
-        showToast('殖民地已重置');
-      },
-
-      async nextStep() {
-        if (this.processing) return;
-        this.processing = true;
-        const btn = document.getElementById('btn-next');
-        btn.disabled = true;
-        btn.innerHTML = '<span class="loader"></span>AI 思考中...';
-        this.setStatus('AI 正在规划下一步...');
-
-        try {
-          const plan = await this.fetchPlan();
-          this.applyPlan(plan);
-        } catch (err) {
-          console.error(err);
-          showToast('AI 决策失败：' + err.message);
-          this.setStatus('决策失败，请重试');
-        } finally {
-          this.processing = false;
-          btn.disabled = false;
-          btn.innerHTML = '下一步建造';
         }
-      },
 
-      async fetchPlan() {
-        const messages = this.buildPrompt();
-        const res = await fetch(CONFIG.apiUrl, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${CONFIG.apiKey}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            model: CONFIG.model,
-            messages: messages,
-            max_tokens: CONFIG.maxTokens,
-            temperature: 0.75,
-            thinking: { type: 'disabled' }
-          })
-        });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
-        const content = data.choices[0].message.content;
-        return this.parsePlan(content);
-      },
+        drawTower(ctx, x, y, scale, color) {
+          ctx.fillStyle = color;
+          ctx.fillRect(x - scale * 6, y - scale * 35, scale * 12, scale * 35);
 
-      buildPrompt() {
-        const existingCoords = this.buildings.map(b => 
-          `(${b.x},${b.z}) ${b.building}`).join(', ');
-        
-        const summary = this.buildings.length === 0
-          ? '火星殖民地尚未建立，这是第一步。请在原点(0,0)附近放置第一个设施。'
-          : `当前已建造 ${this.buildings.length} 个设施。\n已有建筑坐标：${existingCoords}\n`;
+          ctx.fillStyle = '#ff3300';
+          ctx.shadowColor = '#ff2200';
+          ctx.shadowBlur = 10;
+          ctx.fillRect(x - scale * 1.5, y - scale * 45, scale * 3, scale * 12);
+          ctx.shadowBlur = 0;
 
-        const system = `你是 ARES 火星城市规划 AI，负责在火星表面规划自给自足的人类城市。城市范围极其广阔（坐标 ±300），你必须在广袤的土地上合理分散布局，避免拥挤。
+          ctx.fillStyle = '#aaaaaa';
+          ctx.fillRect(x - scale * 8, y - scale * 25, scale * 16, scale * 2);
+        }
+
+        drawGreenhouse(ctx, x, y, scale, color, seed) {
+          const rng = this.seededRandom(seed || 54321);
+
+          ctx.fillStyle = 'rgba(85, 204, 136, 0.4)';
+          ctx.strokeStyle = color;
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.rect(x - scale * 20, y - scale * 12, scale * 40, scale * 12);
+          ctx.fill();
+          ctx.stroke();
+
+          // 使用种子随机生成固定位置的植物
+          for (let i = 0; i < 12; i++) {
+            const px = x - scale * 18 + rng() * scale * 36;
+            const py = y - scale * 2 - rng() * scale * 8;
+            ctx.fillStyle = '#33aa55';
+            ctx.beginPath();
+            ctx.arc(px, py, scale * 2, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+
+        drawFactory(ctx, x, y, scale, color) {
+          ctx.fillStyle = color;
+          ctx.fillRect(x - scale * 18, y - scale * 15, scale * 36, scale * 15);
+
+          ctx.fillStyle = '#555555';
+          ctx.fillRect(x + scale * 10, y - scale * 30, scale * 5, scale * 15);
+          ctx.fillRect(x - scale * 12, y - scale * 25, scale * 4, scale * 10);
+
+          ctx.fillStyle = 'rgba(150, 150, 150, 0.3)';
+          for (let i = 0; i < 3; i++) {
+            ctx.beginPath();
+            ctx.arc(x + scale * 12 + Math.sin(this.time * 2 + i) * scale * 3, y - scale * 35 - i * scale * 5, scale * 4 + i * scale * 2, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+
+        drawRoad(ctx, x, y, scale, color) {
+          ctx.fillStyle = '#333333';
+          ctx.fillRect(x - scale * 25, y - scale * 2, scale * 50, scale * 4);
+          ctx.fillStyle = color;
+          ctx.fillRect(x - scale * 25, y - scale * 0.5, scale * 50, scale * 1);
+        }
+
+        drawDefaultBuilding(ctx, x, y, scale, color) {
+          ctx.fillStyle = color;
+          ctx.beginPath();
+          ctx.moveTo(x - scale * 10, y);
+          ctx.lineTo(x + scale * 10, y);
+          ctx.lineTo(x + scale * 8, y - scale * 20);
+          ctx.lineTo(x - scale * 8, y - scale * 20);
+          ctx.closePath();
+          ctx.fill();
+        }
+
+        addBuilding(building) {
+          if (this.buildings.length >= CONFIG.maxBuildings) {
+            this.buildings.shift();
+          }
+          const seed = Math.floor(Math.random() * 0x7FFFFFFF);
+          const newBuilding = {
+            ...building,
+            y: 0,
+            showLabel: true,
+            animProgress: 0,
+            _seed: seed
+          };
+          this.buildings.push(newBuilding);
+
+          // 建筑升起动画 - 安全地跟踪动画
+          const animId = Symbol('rise');
+          this.activeAnimations.add(animId);
+          const animateRise = () => {
+            if (!this.activeAnimations.has(animId)) return;
+            newBuilding.animProgress += 0.03;
+            if (newBuilding.animProgress < 1 && this.buildings.includes(newBuilding)) {
+              newBuilding.y = -20 * (1 - newBuilding.animProgress);
+              requestAnimationFrame(animateRise);
+            } else {
+              newBuilding.y = 0;
+              this.activeAnimations.delete(animId);
+            }
+          };
+          animateRise();
+        }
+
+        clearBuildings() {
+          this.activeAnimations.clear();
+          this.buildings = [];
+        }
+      }
+
+      // ============ 游戏逻辑 ============
+      function createGame(renderer) {
+        const state = {
+          step: 0,
+          auto: false,
+          autoTimer: null,
+          buildings: [],
+          stats: { population: 0, energy: 0, oxygen: 0 },
+          history: [],
+          processing: false,
+          destroyed: false
+        };
+
+        function reset() {
+          state.step = 0;
+          state.buildings = [];
+          state.stats = { population: 0, energy: 0, oxygen: 0 };
+          state.history = [];
+          state.auto = false;
+          if (state.autoTimer) {
+            clearInterval(state.autoTimer);
+            state.autoTimer = null;
+          }
+          renderer.clearBuildings();
+
+          // 使用 textContent 安全清空
+          while (DOM.log.firstChild) DOM.log.removeChild(DOM.log.firstChild);
+          while (DOM.buildingList.firstChild) DOM.buildingList.removeChild(DOM.buildingList.firstChild);
+
+          DOM.currentPlan.innerHTML = '<div class="name">—</div><div class="meta">暂无建造计划</div>';
+          updateStats();
+          setStatus('等待启动');
+          DOM.btnAuto.textContent = '自动建造';
+          DOM.btnAuto.style.borderColor = '';
+          showToast('殖民地已重置');
+        }
+
+        async function nextStep() {
+          if (state.processing || state.destroyed) return;
+          state.processing = true;
+          DOM.btnNext.disabled = true;
+          const loader = document.createElement('span');
+          loader.className = 'loader';
+          DOM.btnNext.textContent = '';
+          DOM.btnNext.appendChild(loader);
+          DOM.btnNext.appendChild(document.createTextNode('AI 思考中...'));
+          setStatus('AI 正在规划下一步...');
+
+          try {
+            const plan = await fetchPlan();
+            applyPlan(plan);
+          } catch (err) {
+            console.warn('AI plan failed:', err.message);
+            showToast('AI 决策失败，请重试');
+            setStatus('决策失败，请重试');
+          } finally {
+            state.processing = false;
+            DOM.btnNext.disabled = false;
+            DOM.btnNext.textContent = '下一步建造';
+          }
+        }
+
+        async function fetchPlan() {
+          const messages = buildPrompt();
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), CONFIG.requestTimeout);
+
+          try {
+            const res = await fetch(CONFIG.apiUrl, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${CONFIG.apiKey}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                model: CONFIG.model,
+                messages: messages,
+                max_tokens: CONFIG.maxTokens,
+                temperature: 0.75
+              }),
+              signal: controller.signal
+            });
+
+            clearTimeout(timeoutId);
+
+            if (!res.ok) {
+              throw new Error(`网络错误 (${res.status})`);
+            }
+
+            const data = await res.json();
+
+            if (!data.choices || !data.choices[0] || !data.choices[0].message || !data.choices[0].message.content) {
+              throw new Error('AI 返回格式异常');
+            }
+
+            const content = data.choices[0].message.content;
+            return parsePlan(content);
+          } catch (err) {
+            clearTimeout(timeoutId);
+            if (err.name === 'AbortError') {
+              throw new Error('请求超时，请检查网络');
+            }
+            throw err;
+          }
+        }
+
+        function buildPrompt() {
+          const existingCoords = state.buildings.map(b =>
+            `(${b.x},${b.z})`).join(', ');
+
+          const summary = state.buildings.length === 0
+            ? '火星殖民地尚未建立，这是第一步。请在原点(0,0)附近放置第一个设施。'
+            : `当前已建造 ${state.buildings.length} 个设施。\n已有建筑坐标：${existingCoords}\n`;
+
+          const system = `你是 ARES 火星城市规划 AI，负责在火星表面规划自给自足的人类城市。城市范围极其广阔（坐标 ±300），你必须在广袤的土地上合理分散布局，避免拥挤。
 
 **核心规则：**
 1. 建筑类型：能源设施、生命支持、居住区、研究中心、温室、工厂、交通设施、防御设施、存储设施、通讯设施
@@ -1029,198 +1136,316 @@
 6. 返回严格 JSON，不要添加解释文字
 7. JSON 字段：building(建筑名), type(类型), reason(50字以内原因), x, z, scale(0.8-1.5)`;
 
-        const user = `第 ${this.step + 1} 步建造决策。\n${summary}\n当前：人口 ${this.stats.population}，能源 ${this.stats.energy}，氧气 ${this.stats.oxygen}。\n请选择与已有建筑间距至少60的坐标，返回 JSON。`;
+          const user = `第 ${state.step + 1} 步建造决策。\n${summary}\n当前：人口 ${state.stats.population}，能源 ${state.stats.energy}，氧气 ${state.stats.oxygen}。\n请选择与已有建筑间距至少60的坐标，返回 JSON。`;
 
-        return [
-          { role: 'system', content: system },
-          { role: 'user', content: user }
-        ];
-      },
+          return [
+            { role: 'system', content: system },
+            { role: 'user', content: user }
+          ];
+        }
 
-      parsePlan(content) {
-        console.log('AI raw response:', content);
-        
-        // 多种策略尝试提取和解析JSON
-        const attempts = [];
-        const codeMatch = content.match(/```json\s*([\s\S]*?)```/);
-        if (codeMatch) attempts.push(codeMatch[1].trim());
-        attempts.push(content.trim());
-        
-        for (const attempt of attempts) {
-          // 尝试直接解析
-          try {
-            const parsed = JSON.parse(attempt);
-            return this.processPlanObj(Array.isArray(parsed) ? parsed[0] : parsed);
-          } catch (e) {}
-          
-          // 尝试提取数组 [...] 
-          const arrayMatch = attempt.match(/\[[\s\S]*\]/);
-          if (arrayMatch) {
+        function parsePlan(content) {
+          if (typeof content !== 'string') throw new Error('返回内容为空');
+
+          const cleanContent = content.trim();
+          const attempts = [];
+
+          const codeMatch = cleanContent.match(/```json\s*([\s\S]*?)```/);
+          if (codeMatch) attempts.push(codeMatch[1].trim());
+          attempts.push(cleanContent);
+
+          for (const attempt of attempts) {
             try {
-              const arr = JSON.parse(arrayMatch[0]);
-              if (arr.length > 0) return this.processPlanObj(arr[0]);
-            } catch (e) {}
-          }
-          
-          // 尝试提取对象 {...}
-          const firstBrace = attempt.indexOf('{');
-          const lastBrace = attempt.lastIndexOf('}');
-          if (firstBrace >= 0 && lastBrace > firstBrace) {
-            let json = attempt.substring(firstBrace, lastBrace + 1);
-            json = json.trim();
-            json = json.replace(/,\s*}/g, '}');
-            
-            // 检测多对象模式（如 },{ 或 },\n{）
-            if (json.match(/\}[,\s]*\{/)) {
-              json = '[' + json + ']';
+              const parsed = JSON.parse(attempt);
+              return processPlanObj(Array.isArray(parsed) ? parsed[0] : parsed);
+            } catch (e) { /* continue */ }
+
+            const arrayMatch = attempt.match(/\[[\s\S]*\]/);
+            if (arrayMatch) {
               try {
-                const arr = JSON.parse(json);
-                if (arr.length > 0) return this.processPlanObj(arr[0]);
-              } catch (e) {}
+                const arr = JSON.parse(arrayMatch[0]);
+                if (arr.length > 0) return processPlanObj(arr[0]);
+              } catch (e) { /* continue */ }
             }
-            
-            try {
-              const obj = JSON.parse(json);
-              return this.processPlanObj(obj);
-            } catch (e) {
-              console.log('JSON parse failed:', json.substring(0, 200), e.message);
+
+            const firstBrace = attempt.indexOf('{');
+            const lastBrace = attempt.lastIndexOf('}');
+            if (firstBrace >= 0 && lastBrace > firstBrace) {
+              let json = attempt.substring(firstBrace, lastBrace + 1).trim();
+              json = json.replace(/,\s*}/g, '}').replace(/,\s*]/g, ']');
+
+              if (json.match(/\}[,\s]*\{/)) {
+                json = '[' + json + ']';
+                try {
+                  const arr = JSON.parse(json);
+                  if (arr.length > 0) return processPlanObj(arr[0]);
+                } catch (e) { /* continue */ }
+              }
+
+              try {
+                const obj = JSON.parse(json);
+                return processPlanObj(obj);
+              } catch (e) { /* continue */ }
+            }
+          }
+
+          throw new Error('无法解析AI返回的JSON');
+        }
+
+        function processPlanObj(obj) {
+          if (!obj || typeof obj !== 'object') throw new Error('返回格式不正确');
+          if (!obj.building || !obj.type) throw new Error('返回格式不正确');
+
+          // 白名单验证类型
+          let safeType = sanitizeString(obj.type, 10);
+          if (!CONFIG.allowedTypes.includes(safeType)) {
+            safeType = '默认';
+          }
+
+          const safeBuilding = sanitizeString(obj.building, 30);
+          const safeReason = sanitizeString(obj.reason, 100);
+
+          const plan = {
+            building: safeBuilding || '未知建筑',
+            type: safeType,
+            reason: safeReason || '无',
+            x: sanitizeNumber(obj.x, -CONFIG.coordRange, CONFIG.coordRange, 0),
+            z: sanitizeNumber(obj.z, -CONFIG.coordRange, CONFIG.coordRange, 0),
+            scale: sanitizeNumber(obj.scale, 0.8, 1.5, 1)
+          };
+
+          // 碰撞检测
+          let attempts = 0;
+          const maxAttempts = 30;
+          while (isTooClose(plan) && attempts < maxAttempts) {
+            const angle = Math.random() * Math.PI * 2;
+            const dist = CONFIG.minSpacing + Math.random() * 60;
+            plan.x = sanitizeNumber(plan.x + Math.cos(angle) * dist, -CONFIG.coordRange, CONFIG.coordRange, plan.x);
+            plan.z = sanitizeNumber(plan.z + Math.sin(angle) * dist, -CONFIG.coordRange, CONFIG.coordRange, plan.z);
+            attempts++;
+          }
+
+          return plan;
+        }
+
+        function isTooClose(plan) {
+          for (const b of state.buildings) {
+            const dx = plan.x - b.x;
+            const dz = plan.z - b.z;
+            const dist = Math.sqrt(dx * dx + dz * dz);
+            if (dist < CONFIG.minSpacing) return true;
+          }
+          return false;
+        }
+
+        function applyPlan(plan) {
+          state.step++;
+          plan.step = state.step;
+          state.buildings.push(plan);
+          state.history.push(plan);
+          renderer.addBuilding(plan);
+          updateStatsFromPlan(plan);
+          updateStats();
+          addLog(plan);
+          updateCurrentPlan(plan);
+          updateBuildingList();
+          setStatus(`已完成第 ${state.step} 步建造`);
+          showToast(`已建造：${plan.building}`);
+        }
+
+        function updateStatsFromPlan(plan) {
+          switch (plan.type) {
+            case '能源设施': state.stats.energy += 25; break;
+            case '生命支持': state.stats.oxygen += 20; state.stats.population += 10; break;
+            case '居住区': state.stats.population += 40; state.stats.oxygen = Math.max(0, state.stats.oxygen - 5); break;
+            case '研究中心': state.stats.energy = Math.max(0, state.stats.energy - 5); state.stats.population += 8; break;
+            case '温室': state.stats.oxygen += 30; state.stats.population += 5; break;
+            case '工厂': state.stats.energy = Math.max(0, state.stats.energy - 10); state.stats.population += 15; break;
+            case '交通设施': state.stats.energy = Math.max(0, state.stats.energy - 2); break;
+            case '防御设施': state.stats.energy = Math.max(0, state.stats.energy - 3); break;
+            case '存储设施': state.stats.population += 5; break;
+            case '通讯设施': state.stats.energy = Math.max(0, state.stats.energy - 4); break;
+          }
+          state.stats.population = Math.max(0, state.stats.population);
+          state.stats.energy = Math.max(0, state.stats.energy);
+          state.stats.oxygen = Math.max(0, state.stats.oxygen);
+        }
+
+        function updateStats() {
+          DOM.statBuildings.textContent = state.buildings.length;
+          DOM.statPopulation.textContent = state.stats.population;
+          DOM.statEnergy.textContent = state.stats.energy;
+          DOM.statOxygen.textContent = state.stats.oxygen;
+          DOM.solCounter.textContent = Math.max(1, state.step);
+        }
+
+        function createLogEntry(step, title, reason) {
+          const entry = document.createElement('div');
+          entry.className = 'log-entry';
+
+          const stepDiv = document.createElement('div');
+          stepDiv.className = 'log-step';
+          stepDiv.textContent = `STEP ${step}`;
+
+          const titleDiv = document.createElement('div');
+          titleDiv.className = 'log-title';
+          titleDiv.textContent = `${title}`;
+
+          const reasonDiv = document.createElement('div');
+          reasonDiv.className = 'log-reason';
+          reasonDiv.textContent = reason;
+
+          entry.appendChild(stepDiv);
+          entry.appendChild(titleDiv);
+          entry.appendChild(reasonDiv);
+          return entry;
+        }
+
+        function addLog(plan) {
+          const entry = createLogEntry(plan.step, `${plan.building} · ${plan.type}`, plan.reason);
+          DOM.log.insertBefore(entry, DOM.log.firstChild);
+
+          // 限制日志条目数量
+          while (DOM.log.children.length > 50) {
+            DOM.log.removeChild(DOM.log.lastChild);
+          }
+        }
+
+        function updateCurrentPlan(plan) {
+          DOM.currentPlan.innerHTML = '';
+
+          const nameDiv = document.createElement('div');
+          nameDiv.className = 'name';
+          nameDiv.textContent = plan.building;
+
+          const metaDiv = document.createElement('div');
+          metaDiv.className = 'meta';
+          metaDiv.innerHTML =
+            `类型：${escapeHtml(plan.type)}<br>` +
+            `坐标：(${plan.x.toFixed(1)}, ${plan.z.toFixed(1)})<br>` +
+            `规模：${plan.scale.toFixed(2)}`;
+
+          DOM.currentPlan.appendChild(nameDiv);
+          DOM.currentPlan.appendChild(metaDiv);
+        }
+
+        function updateBuildingList() {
+          DOM.buildingList.innerHTML = '';
+          const reversed = state.buildings.slice().reverse();
+          const maxItems = Math.min(reversed.length, 50);
+
+          for (let i = 0; i < maxItems; i++) {
+            const b = reversed[i];
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            entry.style.padding = '8px 0';
+
+            const stepDiv = document.createElement('div');
+            stepDiv.className = 'log-step';
+            stepDiv.textContent = `STEP ${b.step}`;
+
+            const titleDiv = document.createElement('div');
+            titleDiv.className = 'log-title';
+            titleDiv.textContent = b.building;
+
+            const reasonDiv = document.createElement('div');
+            reasonDiv.className = 'log-reason';
+            reasonDiv.textContent = `${b.type} · (${b.x.toFixed(0)}, ${b.z.toFixed(0)})`;
+
+            entry.appendChild(stepDiv);
+            entry.appendChild(titleDiv);
+            entry.appendChild(reasonDiv);
+            DOM.buildingList.appendChild(entry);
+          }
+        }
+
+        function setStatus(text) {
+          DOM.statusText.textContent = text;
+        }
+
+        function toggleAuto() {
+          state.auto = !state.auto;
+          if (state.auto) {
+            DOM.btnAuto.textContent = '停止自动';
+            DOM.btnAuto.style.borderColor = 'var(--mars-red)';
+            nextStep();
+            state.autoTimer = setInterval(() => {
+              if (state.auto && !state.processing) {
+                nextStep();
+              }
+            }, 8000);
+          } else {
+            DOM.btnAuto.textContent = '自动建造';
+            DOM.btnAuto.style.borderColor = '';
+            if (state.autoTimer) {
+              clearInterval(state.autoTimer);
+              state.autoTimer = null;
             }
           }
         }
-        
-        throw new Error('无法解析AI返回的JSON');
-      },
 
-      processPlanObj(obj) {
-        if (!obj.building || !obj.type) throw new Error('返回格式不正确');
-        obj.step = this.step + 1;
-        obj.x = Math.max(-CONFIG.coordRange, Math.min(CONFIG.coordRange, obj.x || 0));
-        obj.z = Math.max(-CONFIG.coordRange, Math.min(CONFIG.coordRange, obj.z || 0));
-        obj.scale = Math.max(0.8, Math.min(1.5, obj.scale || 1));
-        
-        // 碰撞检测：如果与已有建筑太近，自动偏移
-        let attempts = 0;
-        const maxAttempts = 20;
-        while (this.isTooClose(obj) && attempts < maxAttempts) {
-          const angle = Math.random() * Math.PI * 2;
-          const dist = CONFIG.minSpacing + Math.random() * 40;
-          obj.x = Math.max(-CONFIG.coordRange, Math.min(CONFIG.coordRange, obj.x + Math.cos(angle) * dist));
-          obj.z = Math.max(-CONFIG.coordRange, Math.min(CONFIG.coordRange, obj.z + Math.sin(angle) * dist));
-          attempts++;
+        function destroy() {
+          state.destroyed = true;
+          state.auto = false;
+          if (state.autoTimer) {
+            clearInterval(state.autoTimer);
+            state.autoTimer = null;
+          }
+          renderer.destroy();
         }
-        
-        return obj;
-      },
 
-      isTooClose(plan) {
-        for (const b of this.buildings) {
-          const dx = plan.x - b.x;
-          const dz = plan.z - b.z;
-          const dist = Math.sqrt(dx * dx + dz * dz);
-          if (dist < CONFIG.minSpacing) return true;
-        }
-        return false;
-      },
-
-      applyPlan(plan) {
-        this.step++;
-        this.buildings.push(plan);
-        this.history.push(plan);
-        renderer.addBuilding(plan);
-        this.updateStatsFromPlan(plan);
-        this.updateStats();
-        this.addLog(plan);
-        this.updateCurrentPlan(plan);
-        this.updateBuildingList();
-        this.setStatus(`已完成第 ${this.step} 步建造`);
-        showToast(`已建造：${plan.building}`);
-      },
-
-      updateStatsFromPlan(plan) {
-        const type = plan.type;
-        if (type === '能源设施') this.stats.energy += 25;
-        if (type === '生命支持') { this.stats.oxygen += 20; this.stats.population += 10; }
-        if (type === '居住区') { this.stats.population += 40; this.stats.oxygen -= 5; }
-        if (type === '研究中心') { this.stats.energy -= 5; this.stats.population += 8; }
-        if (type === '温室') { this.stats.oxygen += 30; this.stats.population += 5; }
-        if (type === '工厂') { this.stats.energy -= 10; this.stats.population += 15; }
-        if (type === '交通设施') { this.stats.energy -= 2; }
-        if (type === '防御设施') { this.stats.energy -= 3; }
-        if (type === '存储设施') { this.stats.population += 5; }
-        if (type === '通讯设施') { this.stats.energy -= 4; }
-        this.stats.population = Math.max(0, this.stats.population);
-        this.stats.energy = Math.max(0, this.stats.energy);
-        this.stats.oxygen = Math.max(0, this.stats.oxygen);
-      },
-
-      updateStats() {
-        document.getElementById('stat-buildings').textContent = this.buildings.length;
-        document.getElementById('stat-population').textContent = this.stats.population;
-        document.getElementById('stat-energy').textContent = this.stats.energy;
-        document.getElementById('stat-oxygen').textContent = this.stats.oxygen;
-        document.getElementById('sol-counter').textContent = Math.max(1, this.step);
-      },
-
-      addLog(plan) {
-        const log = document.getElementById('log');
-        const entry = document.createElement('div');
-        entry.className = 'log-entry';
-        entry.innerHTML = `
-          <div class="log-step">STEP ${plan.step}</div>
-          <div class="log-title">${plan.building} · ${plan.type}</div>
-          <div class="log-reason">${plan.reason}</div>
-        `;
-        log.insertBefore(entry, log.firstChild);
-      },
-
-      updateCurrentPlan(plan) {
-        document.getElementById('current-plan').innerHTML = `
-          <div class="name">${plan.building}</div>
-          <div class="meta">类型：${plan.type}<br>坐标：(${plan.x.toFixed(1)}, ${plan.z.toFixed(1)})<br>规模：${plan.scale.toFixed(2)}</div>
-        `;
-      },
-
-      updateBuildingList() {
-        const list = document.getElementById('building-list');
-        list.innerHTML = this.buildings.slice().reverse().map(b => `
-          <div class="log-entry" style="padding:8px 0;">
-            <div class="log-step">STEP ${b.step}</div>
-            <div class="log-title">${b.building}</div>
-            <div class="log-reason">${b.type} · (${b.x.toFixed(0)}, ${b.z.toFixed(0)})</div>
-          </div>
-        `).join('');
-      },
-
-      setStatus(text) {
-        document.getElementById('status-text').textContent = text;
-      },
-
-      toggleAuto() {
-        this.auto = !this.auto;
-        const btn = document.getElementById('btn-auto');
-        if (this.auto) {
-          btn.textContent = '停止自动';
-          btn.style.borderColor = 'var(--mars-red)';
-          this.nextStep();
-          this.autoTimer = setInterval(() => this.nextStep(), 8000);
-        } else {
-          btn.textContent = '自动建造';
-          btn.style.borderColor = '';
-          clearInterval(this.autoTimer);
-        }
+        return { reset, nextStep, toggleAuto, destroy, state };
       }
-    };
 
-    function showToast(msg) {
-      const t = document.getElementById('toast');
-      t.textContent = msg;
-      t.classList.add('show');
-      setTimeout(() => t.classList.remove('show'), 2800);
-    }
+      // ============ Toast 提示 ============
+      let toastTimer = null;
+      function showToast(msg) {
+        if (toastTimer) clearTimeout(toastTimer);
+        DOM.toast.textContent = sanitizeString(msg, 200);
+        DOM.toast.classList.add('show');
+        toastTimer = setTimeout(() => DOM.toast.classList.remove('show'), 2800);
+      }
 
-    // 初始状态
-    game.updateStats();
-    showToast('ARES 火星城市准备就绪 · 点击下一步开始建造');
+      // ============ 初始化 ============
+      cacheDOM();
+      const canvas = DOM.canvas;
+      const renderer = new MarsCityRenderer(canvas);
+      const game = createGame(renderer);
+
+      // 事件绑定 - 使用 addEventListener 而非内联 onclick，并保存引用以便清理
+      const _onBtnNext = () => game.nextStep();
+      const _onBtnAuto = () => game.toggleAuto();
+      const _onBtnReset = () => game.reset();
+      const _onBeforeUnload = () => {
+        game.destroy();
+        if (toastTimer) clearTimeout(toastTimer);
+      };
+
+      DOM.btnNext.addEventListener('click', _onBtnNext);
+      DOM.btnAuto.addEventListener('click', _onBtnAuto);
+      DOM.btnReset.addEventListener('click', _onBtnReset);
+      window.addEventListener('beforeunload', _onBeforeUnload);
+
+      // 扩展renderer和game的destroy以清理按钮事件
+      const originalRendererDestroy = renderer.destroy.bind(renderer);
+      renderer.destroy = function() {
+        originalRendererDestroy();
+        try {
+          DOM.btnNext.removeEventListener('click', _onBtnNext);
+          DOM.btnAuto.removeEventListener('click', _onBtnAuto);
+          DOM.btnReset.removeEventListener('click', _onBtnReset);
+          window.removeEventListener('beforeunload', _onBeforeUnload);
+        } catch (e) { /* 忽略清理错误 */ }
+      };
+
+      // 防止全局暴露，仅在开发环境暴露
+      // window.game = game;
+      // window.renderer = renderer;
+
+      // 初始化显示
+      game.reset();
+      showToast('ARES 火星城市准备就绪 · 点击下一步开始建造');
+    })();
   </script>
 </body>
 </html>
