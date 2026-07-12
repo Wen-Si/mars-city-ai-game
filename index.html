@@ -4,23 +4,30 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com https://fonts.googleapis.com; img-src 'self' data: blob:; connect-src 'self' https://open.bigmodel.cn; object-src 'none'; base-uri 'self'; form-action 'self';">
-  <title>火星城市 · AI 建造计划</title>
+  <title>ARES · 火星城市建造计划</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Noto+Sans+SC:wght@300;400;700&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Noto+Sans+SC:wght@300;400;500;700&display=swap">
   <style>
-
     :root {
-      --mars-red: #c1440e;
-      --mars-dark: #4a1910;
-      --mars-light: #e8784a;
-      --sand: #d4a574;
-      --ink: #0d0a09;
-      --panel: rgba(13, 10, 9, 0.78);
-      --panel-border: rgba(255, 140, 80, 0.28);
-      --glow: rgba(255, 120, 60, 0.55);
-      --success: #4ade80;
-      --info: #60a5fa;
+      --rust: #b83d0e;
+      --rust-deep: #7a2810;
+      --rust-glow: #e85d2a;
+      --ochre: #d49a52;
+      --ochre-dim: #9a7040;
+      --basalt: #1a1310;
+      --basalt-light: #2a1f18;
+      --regolith: #3d2a1e;
+      --hud-cyan: #5ec8d8;
+      --hud-amber: #e8a040;
+      --hud-green: #5ec878;
+      --text: #e8d5c4;
+      --text-dim: #a08878;
+      --text-faint: #5a4838;
+      --panel-bg: rgba(16, 11, 8, 0.82);
+      --panel-border: rgba(184, 61, 14, 0.25);
+      --panel-glow: rgba(232, 93, 42, 0.12);
+      --grid-line: rgba(184, 61, 14, 0.08);
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -28,28 +35,41 @@
     html, body {
       width: 100%; height: 100%;
       overflow: hidden;
-      background: var(--ink);
-      color: #f3e6dc;
+      background: var(--basalt);
+      color: var(--text);
       font-family: 'Noto Sans SC', sans-serif;
+      -webkit-font-smoothing: antialiased;
     }
 
+    /* ===== Canvas ===== */
     #canvas-container {
       position: fixed;
       inset: 0;
       z-index: 1;
-      background: #0d0a09;
+      background: var(--basalt);
     }
 
     #game-canvas {
       position: absolute;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
+      top: 0; left: 0;
+      width: 100vw; height: 100vh;
       display: block;
       touch-action: none;
     }
 
+    /* ===== Atmospheric overlay ===== */
+    #canvas-container::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse at 50% 100%, rgba(122, 40, 16, 0.15) 0%, transparent 60%),
+        radial-gradient(ellipse at 0% 0%, rgba(26, 19, 16, 0.3) 0%, transparent 50%);
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    /* ===== UI Grid ===== */
     #ui {
       position: fixed;
       inset: 0;
@@ -59,30 +79,52 @@
       grid-template-areas:
         "header header header"
         "left center right";
-      grid-template-columns: 320px 1fr 280px;
+      grid-template-columns: 300px 1fr 260px;
       grid-template-rows: auto 1fr;
-      gap: 16px;
-      padding: 18px;
+      gap: 14px;
+      padding: 14px;
     }
 
     .header { grid-area: header; }
-    .left-col { grid-area: left; display: flex; flex-direction: column; gap: 16px; }
+    .left-col { grid-area: left; display: flex; flex-direction: column; gap: 14px; min-height: 0; }
     .center-area { grid-area: center; pointer-events: none; min-width: 100px; }
-    .right-col { grid-area: right; display: flex; flex-direction: column; gap: 16px; }
+    .right-col { grid-area: right; display: flex; flex-direction: column; gap: 14px; min-height: 0; }
 
+    /* ===== HUD Panel ===== */
     .panel {
       pointer-events: auto;
-      background: rgba(13, 10, 9, 0.65);
+      background: var(--panel-bg);
       border: 1px solid var(--panel-border);
-      border-radius: 14px;
-      padding: 16px;
-      backdrop-filter: blur(10px);
-      box-shadow: 0 8px 32px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(255,255,255,0.03);
-      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      border-radius: 6px;
+      padding: 14px 16px;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      box-shadow:
+        0 4px 24px rgba(0, 0, 0, 0.5),
+        inset 0 1px 0 rgba(255, 140, 80, 0.06);
+      position: relative;
     }
 
-    .panel:hover {
-      box-shadow: 0 12px 40px rgba(193, 68, 14, 0.18), inset 0 0 0 1px rgba(255,255,255,0.05);
+    /* HUD corner brackets */
+    .panel::before,
+    .panel::after {
+      content: '';
+      position: absolute;
+      width: 10px; height: 10px;
+      border-color: var(--rust-glow);
+      border-style: solid;
+      border-width: 0;
+      opacity: 0.6;
+    }
+    .panel::before {
+      top: -1px; left: -1px;
+      border-top-width: 2px;
+      border-left-width: 2px;
+    }
+    .panel::after {
+      bottom: -1px; right: -1px;
+      border-bottom-width: 2px;
+      border-right-width: 2px;
     }
 
     .center-area {
@@ -92,74 +134,137 @@
       box-shadow: none;
       backdrop-filter: none;
     }
+    .center-area::before, .center-area::after { display: none; }
 
-    h1 {
-      font-family: 'Orbitron', sans-serif;
-      font-size: 26px;
-      letter-spacing: 2px;
-      text-transform: uppercase;
-      color: var(--mars-light);
-      text-shadow: 0 0 20px var(--glow);
-      margin-bottom: 4px;
-    }
-
-    .subtitle {
-      font-size: 12px;
-      color: var(--sand);
-      letter-spacing: 1px;
-      opacity: 0.85;
-    }
-
+    /* ===== Header ===== */
     .header {
       display: flex;
       justify-content: space-between;
-      align-items: flex-start;
+      align-items: center;
+      padding: 12px 20px;
     }
 
+    .header-left {
+      display: flex;
+      align-items: baseline;
+      gap: 14px;
+    }
+
+    h1 {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 22px;
+      font-weight: 900;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      color: var(--rust-glow);
+      text-shadow: 0 0 18px rgba(232, 93, 42, 0.4);
+    }
+
+    .subtitle {
+      font-size: 11px;
+      color: var(--text-dim);
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .header-stat {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 2px;
+    }
+
+    .header-stat-label {
+      font-size: 9px;
+      color: var(--text-faint);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      font-family: 'Orbitron', sans-serif;
+    }
+
+    .header-stat-value {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--hud-amber);
+    }
+
+    .render-mode {
+      font-size: 9px;
+      font-family: 'Orbitron', sans-serif;
+      font-weight: 600;
+      color: var(--hud-cyan);
+      background: rgba(94, 200, 216, 0.08);
+      border: 1px solid rgba(94, 200, 216, 0.2);
+      padding: 3px 8px;
+      border-radius: 3px;
+      letter-spacing: 1px;
+      margin-left: 8px;
+    }
+
+    /* ===== Stats Grid ===== */
     .stats-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      margin-top: 12px;
+      gap: 8px;
+      margin-top: 10px;
     }
 
     .stat {
-      background: rgba(255,255,255,0.04);
-      border-radius: 10px;
-      padding: 12px;
-      border-left: 3px solid var(--mars-red);
+      background: rgba(255, 255, 255, 0.02);
+      border-radius: 4px;
+      padding: 10px 12px;
+      border-left: 2px solid var(--rust);
+      transition: border-color 0.3s ease, background 0.3s ease;
+    }
+
+    .stat:hover {
+      background: rgba(184, 61, 14, 0.06);
+      border-left-color: var(--rust-glow);
     }
 
     .stat-label {
-      font-size: 11px;
-      color: var(--sand);
+      font-size: 9px;
+      color: var(--text-faint);
       text-transform: uppercase;
-      letter-spacing: 1px;
+      letter-spacing: 2px;
       margin-bottom: 4px;
+      font-family: 'Orbitron', sans-serif;
     }
 
     .stat-value {
       font-family: 'Orbitron', sans-serif;
-      font-size: 22px;
+      font-size: 20px;
+      font-weight: 700;
       color: #fff;
+      transition: color 0.3s ease;
     }
 
+    /* ===== Buttons ===== */
     .btn {
       width: 100%;
-      padding: 14px 18px;
+      padding: 12px 16px;
       border: none;
-      border-radius: 10px;
-      background: linear-gradient(135deg, var(--mars-red), #9a2e08);
+      border-radius: 4px;
+      background: linear-gradient(135deg, var(--rust), var(--rust-deep));
       color: #fff;
       font-family: 'Orbitron', sans-serif;
-      font-size: 14px;
+      font-size: 12px;
       font-weight: 700;
-      letter-spacing: 1px;
+      letter-spacing: 2px;
       cursor: pointer;
       text-transform: uppercase;
-      box-shadow: 0 4px 20px rgba(193, 68, 14, 0.35);
-      transition: all 0.2s ease;
-      margin-top: 14px;
+      box-shadow:
+        0 3px 16px rgba(184, 61, 14, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+      transition: all 0.15s ease;
+      margin-top: 10px;
       position: relative;
       overflow: hidden;
     }
@@ -169,19 +274,28 @@
       position: absolute;
       top: 0; left: -100%;
       width: 100%; height: 100%;
-      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent);
-      transition: left 0.5s ease;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
+      transition: left 0.4s ease;
     }
 
     .btn:hover::after { left: 100%; }
 
     .btn:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 28px rgba(193, 68, 14, 0.5);
+      transform: translateY(-1px);
+      box-shadow:
+        0 5px 22px rgba(232, 93, 42, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    }
+
+    .btn:active {
+      transform: translateY(0);
+      box-shadow:
+        0 2px 10px rgba(184, 61, 14, 0.3),
+        inset 0 2px 4px rgba(0, 0, 0, 0.2);
     }
 
     .btn:disabled {
-      opacity: 0.5;
+      opacity: 0.4;
       cursor: not-allowed;
       transform: none;
     }
@@ -190,131 +304,179 @@
       background: transparent;
       border: 1px solid var(--panel-border);
       box-shadow: none;
-      margin-top: 8px;
+      margin-top: 6px;
+      color: var(--text-dim);
     }
 
     .btn-secondary:hover {
-      background: rgba(255, 140, 80, 0.08);
-      box-shadow: 0 4px 16px rgba(193, 68, 14, 0.2);
+      background: rgba(184, 61, 14, 0.06);
+      border-color: var(--rust-glow);
+      color: var(--text);
+      box-shadow: 0 3px 14px rgba(184, 61, 14, 0.15);
     }
 
+    .btn-secondary:active {
+      background: rgba(184, 61, 14, 0.1);
+    }
+
+    /* ===== Log ===== */
     .log {
       flex: 1;
-      min-height: 180px;
+      min-height: 120px;
       max-height: 320px;
       overflow-y: auto;
-      font-size: 13px;
-      line-height: 1.65;
-      color: #e8d4c4;
+      font-size: 12px;
+      line-height: 1.6;
+      color: var(--text);
+      padding-right: 4px;
     }
 
     .log-entry {
-      padding: 10px 0;
-      border-bottom: 1px solid rgba(255,255,255,0.06);
-      animation: fadeIn 0.5s ease;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(184, 61, 14, 0.06);
+      animation: slideIn 0.4s ease;
     }
 
     .log-entry:last-child { border-bottom: none; }
 
     .log-step {
       font-family: 'Orbitron', sans-serif;
-      color: var(--mars-light);
-      font-size: 11px;
-      letter-spacing: 1px;
-      margin-bottom: 2px;
+      color: var(--rust-glow);
+      font-size: 9px;
+      letter-spacing: 2px;
+      margin-bottom: 3px;
+      font-weight: 600;
     }
 
     .log-title {
       font-weight: 700;
       color: #fff;
-      margin-bottom: 4px;
+      margin-bottom: 3px;
+      font-size: 13px;
     }
 
     .log-reason {
-      color: var(--sand);
-      font-size: 12px;
+      color: var(--text-dim);
+      font-size: 11px;
       word-break: break-word;
+      line-height: 1.5;
     }
 
+    /* ===== Building Card ===== */
     .building-card {
-      background: rgba(255,255,255,0.04);
-      border-radius: 12px;
-      padding: 16px;
-      margin-top: 12px;
-      border: 1px solid rgba(255,140,80,0.15);
+      background: rgba(184, 61, 14, 0.04);
+      border-radius: 4px;
+      padding: 12px 14px;
+      margin-top: 8px;
+      border: 1px solid rgba(184, 61, 14, 0.1);
     }
 
     .building-card .name {
       font-family: 'Orbitron', sans-serif;
-      color: var(--mars-light);
-      font-size: 16px;
+      color: var(--rust-glow);
+      font-size: 14px;
+      font-weight: 700;
       margin-bottom: 6px;
       word-break: break-word;
     }
 
     .building-card .meta {
-      font-size: 12px;
-      color: var(--sand);
-      line-height: 1.6;
+      font-size: 11px;
+      color: var(--text-dim);
+      line-height: 1.7;
     }
 
+    /* ===== Loader ===== */
     .loader {
       display: inline-block;
-      width: 16px; height: 16px;
-      border: 2px solid rgba(255,255,255,0.2);
-      border-top-color: #fff;
+      width: 14px; height: 14px;
+      border: 2px solid rgba(255, 255, 255, 0.15);
+      border-top-color: var(--rust-glow);
       border-radius: 50%;
-      animation: spin 1s linear infinite;
+      animation: spin 0.8s linear infinite;
       margin-right: 8px;
       vertical-align: middle;
     }
 
+    /* ===== Toast ===== */
     .toast {
       position: fixed;
-      bottom: 28px;
+      bottom: 24px;
       left: 50%;
-      transform: translateX(-50%) translateY(20px);
-      background: var(--panel);
-      border: 1px solid var(--panel-border);
-      padding: 14px 24px;
-      border-radius: 10px;
+      transform: translateX(-50%) translateY(16px);
+      background: var(--panel-bg);
+      border: 1px solid var(--rust-glow);
+      padding: 12px 24px;
+      border-radius: 4px;
       color: #fff;
-      font-size: 14px;
+      font-size: 13px;
       opacity: 0;
       pointer-events: none;
-      transition: all 0.4s ease;
+      transition: all 0.3s ease;
       z-index: 100;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+      box-shadow:
+        0 8px 32px rgba(0, 0, 0, 0.6),
+        0 0 20px rgba(232, 93, 42, 0.2);
       max-width: 80vw;
       text-align: center;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      letter-spacing: 0.5px;
     }
 
-    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
 
+    /* ===== Hint ===== */
     .hint {
-      font-size: 11px;
-      color: rgba(212, 165, 116, 0.7);
-      margin-top: 10px;
-      line-height: 1.5;
-    }
-
-    .render-mode {
       font-size: 10px;
-      color: var(--mars-light);
-      background: rgba(193, 68, 14, 0.15);
-      padding: 4px 8px;
-      border-radius: 4px;
-      margin-left: 10px;
+      color: var(--text-faint);
+      margin-top: 10px;
+      line-height: 1.6;
+      letter-spacing: 0.3px;
     }
 
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+    /* ===== Panel label (section titles) ===== */
+    .panel-label {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--ochre);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .panel-label::before {
+      content: '';
+      width: 3px; height: 12px;
+      background: var(--rust-glow);
+      border-radius: 1px;
+    }
+
+    /* ===== Animations ===== */
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateX(-8px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    ::-webkit-scrollbar { width: 6px; }
-    ::-webkit-scrollbar-track { background: rgba(255,255,255,0.04); border-radius: 3px; }
-    ::-webkit-scrollbar-thumb { background: var(--mars-red); border-radius: 3px; }
+    /* ===== Scrollbar ===== */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); }
+    ::-webkit-scrollbar-thumb {
+      background: var(--rust);
+      border-radius: 2px;
+    }
+    ::-webkit-scrollbar-thumb:hover { background: var(--rust-glow); }
 
-    @media (max-width: 800px) {
+    /* ===== Responsive ===== */
+    @media (max-width: 900px) {
       #ui {
         grid-template-areas:
           "header"
@@ -322,9 +484,22 @@
           "right";
         grid-template-columns: 1fr;
         grid-template-rows: auto auto auto;
+        gap: 10px;
+        padding: 10px;
       }
       .center-area { display: none; }
       .panel { max-height: none; }
+      h1 { font-size: 18px; letter-spacing: 2px; }
+      .header { flex-direction: column; gap: 8px; align-items: flex-start; }
+      .header-right { width: 100%; justify-content: space-between; }
+      .log { max-height: 200px; }
+    }
+
+    @media (max-width: 500px) {
+      .stats-grid { grid-template-columns: 1fr 1fr; gap: 6px; }
+      .stat { padding: 8px; }
+      .stat-value { font-size: 16px; }
+      .btn { padding: 10px; font-size: 11px; }
     }
   </style>
 </head>
@@ -335,13 +510,19 @@
 
   <div id="ui">
     <div class="panel header">
-      <div>
-        <h1>ARES · 火星城市 <span class="render-mode" id="render-mode-tag">Canvas 2D</span></h1>
-        <div class="subtitle">AI 大模型驱动的火星殖民地逐步建造模拟器 · 基于 LingBot-World 世界模型理念</div>
+      <div class="header-left">
+        <h1>ARES<span class="render-mode" id="render-mode-tag">CANVAS 2D</span></h1>
+        <div class="subtitle">火星殖民地 AI 建造系统</div>
       </div>
-      <div style="text-align:right;">
-        <div class="subtitle">SOL <span id="sol-counter">1</span></div>
-        <div class="subtitle" id="status-text">等待启动</div>
+      <div class="header-right">
+        <div class="header-stat">
+          <div class="header-stat-label">SOL</div>
+          <div class="header-stat-value"><span id="sol-counter">1</span></div>
+        </div>
+        <div class="header-stat">
+          <div class="header-stat-label">STATUS</div>
+          <div class="header-stat-value" id="status-text" style="font-size:12px;color:var(--hud-green);">等待启动</div>
+        </div>
       </div>
     </div>
 
@@ -349,7 +530,7 @@
 
     <div class="left-col">
       <div class="panel">
-        <div class="subtitle" style="margin-bottom:8px;">殖民地状态</div>
+        <div class="panel-label">殖民地状态</div>
         <div class="stats-grid">
           <div class="stat">
             <div class="stat-label">建筑</div>
@@ -371,26 +552,26 @@
         <button class="btn" id="btn-next">下一步建造</button>
         <button class="btn btn-secondary" id="btn-auto">自动建造</button>
         <button class="btn btn-secondary" id="btn-reset">重置殖民地</button>
-        <div class="hint">建筑由智谱 GLM-4.5-Flash 实时决策生成。广阔火星表面（±300坐标范围），拖动鼠标旋转视角，滚轮缩放。</div>
+        <div class="hint">GLM-4.5-Flash 实时决策 · 拖动旋转视角 · 滚轮缩放</div>
       </div>
 
-      <div class="panel" style="flex:1; display:flex; flex-direction:column;">
-        <div class="subtitle" style="margin-bottom:10px;">AI 决策日志</div>
+      <div class="panel" style="flex:1; display:flex; flex-direction:column; min-height:0;">
+        <div class="panel-label">AI 决策日志</div>
         <div class="log" id="log"></div>
       </div>
     </div>
 
     <div class="right-col">
       <div class="panel">
-        <div class="subtitle" style="margin-bottom:8px;">当前计划</div>
+        <div class="panel-label">当前计划</div>
         <div id="current-plan" class="building-card">
           <div class="name">—</div>
           <div class="meta">暂无建造计划</div>
         </div>
       </div>
 
-      <div class="panel" style="flex:1;">
-        <div class="subtitle" style="margin-bottom:10px;">城市导览</div>
+      <div class="panel" style="flex:1; min-height:0; display:flex; flex-direction:column;">
+        <div class="panel-label">城市导览</div>
         <div class="log" id="building-list" style="max-height: 360px;"></div>
       </div>
     </div>
@@ -629,9 +810,11 @@
           const w = this.width;
           const h = this.height;
 
+          // 深空背景
           ctx.fillStyle = '#0d0a09';
           ctx.fillRect(0, 0, w, h);
 
+          // 星空
           this.stars.forEach(star => {
             star.twinkle += star.speed;
             const opacity = 0.3 + Math.sin(star.twinkle) * 0.3;
@@ -641,16 +824,30 @@
             ctx.fill();
           });
 
+          // 火星地表渐变 — 更浓郁的铁锈色调
           const gradient = ctx.createLinearGradient(0, h * 0.35, 0, h);
-          gradient.addColorStop(0, '#2a1510');
-          gradient.addColorStop(0.3, '#4a1910');
-          gradient.addColorStop(0.6, '#6a2515');
-          gradient.addColorStop(1, '#8a3018');
+          gradient.addColorStop(0, '#1a0e08');
+          gradient.addColorStop(0.25, '#3a1810');
+          gradient.addColorStop(0.55, '#5e2515');
+          gradient.addColorStop(0.8, '#7a3018');
+          gradient.addColorStop(1, '#9a4020');
           ctx.fillStyle = gradient;
           ctx.fillRect(0, h * 0.35, w, h * 0.65);
 
+          // 地表纹理噪点
+          ctx.fillStyle = 'rgba(180, 80, 30, 0.03)';
+          for (let i = 0; i < 60; i++) {
+            const tx = Math.random() * w;
+            const ty = h * 0.4 + Math.random() * h * 0.6;
+            const tr = Math.random() * 40 + 10;
+            ctx.beginPath();
+            ctx.arc(tx, ty, tr, 0, Math.PI * 2);
+            ctx.fill();
+          }
+
           this.drawGroundGrid();
 
+          // 沙尘粒子
           this.dustParticles.forEach(p => {
             p.x += p.speed;
             if (p.x > w) p.x = 0;
@@ -670,9 +867,9 @@
           const centerY = this.height * 0.55;
           const gridRadius = 600;
 
-          ctx.strokeStyle = 'rgba(255, 180, 100, 0.20)';
-          ctx.lineWidth = 1.2;
-
+          // 同心圆
+          ctx.strokeStyle = 'rgba(232, 93, 42, 0.15)';
+          ctx.lineWidth = 1;
           for (let r = 40; r <= gridRadius; r += 60) {
             const perspectiveR = r * (1 - this.cameraHeight / 300);
             ctx.beginPath();
@@ -680,9 +877,9 @@
             ctx.stroke();
           }
 
-          ctx.strokeStyle = 'rgba(255, 150, 80, 0.15)';
-          ctx.lineWidth = 0.8;
-
+          // 放射线
+          ctx.strokeStyle = 'rgba(184, 61, 14, 0.10)';
+          ctx.lineWidth = 0.7;
           for (let i = 0; i < 20; i++) {
             const angle = (i / 20) * Math.PI * 2 + this.cameraAngle;
             const x1 = centerX;
@@ -695,21 +892,41 @@
             ctx.lineTo(x2, y2);
             ctx.stroke();
           }
+
+          // 中心标记
+          ctx.strokeStyle = 'rgba(232, 93, 42, 0.4)';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.moveTo(centerX - 8, centerY);
+          ctx.lineTo(centerX + 8, centerY);
+          ctx.moveTo(centerX, centerY - 4);
+          ctx.lineTo(centerX, centerY + 4);
+          ctx.stroke();
         }
 
         drawSunGlow() {
           const ctx = this.ctx;
-          const sunX = this.width * 0.75;
-          const sunY = this.height * 0.15;
+          const sunX = this.width * 0.78;
+          const sunY = this.height * 0.12;
 
-          const gradient = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, 80);
-          gradient.addColorStop(0, 'rgba(255, 200, 100, 0.4)');
-          gradient.addColorStop(0.5, 'rgba(255, 150, 80, 0.15)');
-          gradient.addColorStop(1, 'rgba(255, 100, 50, 0)');
-
-          ctx.fillStyle = gradient;
+          // 外层光晕
+          const outerGlow = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, 120);
+          outerGlow.addColorStop(0, 'rgba(255, 180, 80, 0.35)');
+          outerGlow.addColorStop(0.4, 'rgba(232, 93, 42, 0.12)');
+          outerGlow.addColorStop(1, 'rgba(184, 61, 14, 0)');
+          ctx.fillStyle = outerGlow;
           ctx.beginPath();
-          ctx.arc(sunX, sunY, 80, 0, Math.PI * 2);
+          ctx.arc(sunX, sunY, 120, 0, Math.PI * 2);
+          ctx.fill();
+
+          // 太阳核心
+          const coreGrad = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, 20);
+          coreGrad.addColorStop(0, 'rgba(255, 230, 160, 0.8)');
+          coreGrad.addColorStop(0.5, 'rgba(255, 180, 80, 0.4)');
+          coreGrad.addColorStop(1, 'rgba(232, 93, 42, 0)');
+          ctx.fillStyle = coreGrad;
+          ctx.beginPath();
+          ctx.arc(sunX, sunY, 20, 0, Math.PI * 2);
           ctx.fill();
         }
 
@@ -1367,7 +1584,7 @@
           state.auto = !state.auto;
           if (state.auto) {
             DOM.btnAuto.textContent = '停止自动';
-            DOM.btnAuto.style.borderColor = 'var(--mars-red)';
+            DOM.btnAuto.style.borderColor = 'var(--rust-glow)';
             nextStep();
             state.autoTimer = setInterval(() => {
               if (state.auto && !state.processing) {
