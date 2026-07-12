@@ -13,6 +13,7 @@
       --rust: #b83d0e;
       --rust-deep: #7a2810;
       --rust-glow: #e85d2a;
+      --rust-bright: #ff6b35;
       --ochre: #d49a52;
       --ochre-dim: #9a7040;
       --basalt: #1a1310;
@@ -21,13 +22,12 @@
       --hud-cyan: #5ec8d8;
       --hud-amber: #e8a040;
       --hud-green: #5ec878;
+      --hud-red: #e85d5d;
       --text: #e8d5c4;
       --text-dim: #a08878;
       --text-faint: #5a4838;
-      --panel-bg: rgba(16, 11, 8, 0.82);
-      --panel-border: rgba(184, 61, 14, 0.25);
-      --panel-glow: rgba(232, 93, 42, 0.12);
-      --grid-line: rgba(184, 61, 14, 0.08);
+      --panel-bg: rgba(16, 11, 8, 0.85);
+      --panel-border: rgba(184, 61, 14, 0.22);
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -57,14 +57,14 @@
       touch-action: none;
     }
 
-    /* ===== Atmospheric overlay ===== */
+    /* Vignette + atmosphere overlay */
     #canvas-container::after {
       content: '';
       position: absolute;
       inset: 0;
       background:
-        radial-gradient(ellipse at 50% 100%, rgba(122, 40, 16, 0.15) 0%, transparent 60%),
-        radial-gradient(ellipse at 0% 0%, rgba(26, 19, 16, 0.3) 0%, transparent 50%);
+        radial-gradient(ellipse at 50% 100%, rgba(122, 40, 16, 0.12) 0%, transparent 55%),
+        radial-gradient(ellipse at 50% 50%, transparent 50%, rgba(10, 7, 5, 0.4) 100%);
       pointer-events: none;
       z-index: 2;
     }
@@ -79,52 +79,56 @@
       grid-template-areas:
         "header header header"
         "left center right";
-      grid-template-columns: 300px 1fr 260px;
+      grid-template-columns: 290px 1fr 250px;
       grid-template-rows: auto 1fr;
-      gap: 14px;
-      padding: 14px;
+      gap: 12px;
+      padding: 12px;
     }
 
     .header { grid-area: header; }
-    .left-col { grid-area: left; display: flex; flex-direction: column; gap: 14px; min-height: 0; }
+    .left-col { grid-area: left; display: flex; flex-direction: column; gap: 12px; min-height: 0; }
     .center-area { grid-area: center; pointer-events: none; min-width: 100px; }
-    .right-col { grid-area: right; display: flex; flex-direction: column; gap: 14px; min-height: 0; }
+    .right-col { grid-area: right; display: flex; flex-direction: column; gap: 12px; min-height: 0; }
 
-    /* ===== HUD Panel ===== */
+    /* ===== Panel ===== */
     .panel {
       pointer-events: auto;
       background: var(--panel-bg);
       border: 1px solid var(--panel-border);
-      border-radius: 6px;
+      border-radius: 4px;
       padding: 14px 16px;
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
       box-shadow:
         0 4px 24px rgba(0, 0, 0, 0.5),
-        inset 0 1px 0 rgba(255, 140, 80, 0.06);
+        inset 0 1px 0 rgba(255, 140, 80, 0.05);
       position: relative;
+      animation: panelEnter 0.5s ease both;
     }
 
-    /* HUD corner brackets */
+    .panel:nth-child(1) { animation-delay: 0s; }
+    .panel:nth-child(2) { animation-delay: 0.1s; }
+
+    /* HUD corner marks */
     .panel::before,
     .panel::after {
       content: '';
       position: absolute;
-      width: 10px; height: 10px;
+      width: 8px; height: 8px;
       border-color: var(--rust-glow);
       border-style: solid;
       border-width: 0;
-      opacity: 0.6;
+      opacity: 0.5;
     }
     .panel::before {
       top: -1px; left: -1px;
-      border-top-width: 2px;
-      border-left-width: 2px;
+      border-top-width: 1.5px;
+      border-left-width: 1.5px;
     }
     .panel::after {
       bottom: -1px; right: -1px;
-      border-bottom-width: 2px;
-      border-right-width: 2px;
+      border-bottom-width: 1.5px;
+      border-right-width: 1.5px;
     }
 
     .center-area {
@@ -133,6 +137,7 @@
       border: none;
       box-shadow: none;
       backdrop-filter: none;
+      animation: none;
     }
     .center-area::before, .center-area::after { display: none; }
 
@@ -141,106 +146,124 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 12px 20px;
+      padding: 10px 18px;
     }
 
     .header-left {
       display: flex;
       align-items: baseline;
-      gap: 14px;
+      gap: 12px;
     }
 
     h1 {
       font-family: 'Orbitron', sans-serif;
-      font-size: 22px;
+      font-size: 24px;
       font-weight: 900;
-      letter-spacing: 4px;
+      letter-spacing: 5px;
       text-transform: uppercase;
       color: var(--rust-glow);
-      text-shadow: 0 0 18px rgba(232, 93, 42, 0.4);
+      text-shadow: 0 0 20px rgba(232, 93, 42, 0.35);
     }
 
     .subtitle {
-      font-size: 11px;
+      font-size: 10px;
       color: var(--text-dim);
-      letter-spacing: 1.5px;
+      letter-spacing: 2px;
       text-transform: uppercase;
     }
 
     .header-right {
       display: flex;
       align-items: center;
-      gap: 20px;
+      gap: 24px;
     }
 
     .header-stat {
       display: flex;
       flex-direction: column;
       align-items: flex-end;
-      gap: 2px;
+      gap: 1px;
     }
 
     .header-stat-label {
-      font-size: 9px;
+      font-size: 8px;
       color: var(--text-faint);
-      letter-spacing: 2px;
+      letter-spacing: 2.5px;
       text-transform: uppercase;
       font-family: 'Orbitron', sans-serif;
     }
 
     .header-stat-value {
       font-family: 'Orbitron', sans-serif;
-      font-size: 15px;
+      font-size: 14px;
       font-weight: 700;
       color: var(--hud-amber);
     }
 
+    #status-text {
+      font-size: 11px;
+      color: var(--hud-green);
+      transition: color 0.3s ease;
+    }
+
+    /* Status pulse */
+    .status-pulse {
+      display: inline-block;
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--hud-green);
+      margin-right: 6px;
+      animation: pulse 2s ease-in-out infinite;
+      vertical-align: middle;
+    }
+
     .render-mode {
-      font-size: 9px;
+      font-size: 8px;
       font-family: 'Orbitron', sans-serif;
       font-weight: 600;
       color: var(--hud-cyan);
       background: rgba(94, 200, 216, 0.08);
       border: 1px solid rgba(94, 200, 216, 0.2);
-      padding: 3px 8px;
-      border-radius: 3px;
+      padding: 2px 7px;
+      border-radius: 2px;
       letter-spacing: 1px;
-      margin-left: 8px;
+      margin-left: 6px;
+      vertical-align: middle;
     }
 
-    /* ===== Stats Grid ===== */
+    /* ===== Stats ===== */
     .stats-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 8px;
-      margin-top: 10px;
+      gap: 6px;
+      margin-top: 8px;
     }
 
     .stat {
-      background: rgba(255, 255, 255, 0.02);
-      border-radius: 4px;
-      padding: 10px 12px;
+      background: rgba(255, 255, 255, 0.015);
+      border-radius: 3px;
+      padding: 9px 11px;
       border-left: 2px solid var(--rust);
-      transition: border-color 0.3s ease, background 0.3s ease;
+      transition: all 0.25s ease;
     }
 
     .stat:hover {
-      background: rgba(184, 61, 14, 0.06);
+      background: rgba(184, 61, 14, 0.05);
       border-left-color: var(--rust-glow);
     }
 
     .stat-label {
-      font-size: 9px;
+      font-size: 8px;
       color: var(--text-faint);
       text-transform: uppercase;
-      letter-spacing: 2px;
-      margin-bottom: 4px;
+      letter-spacing: 2.5px;
+      margin-bottom: 3px;
       font-family: 'Orbitron', sans-serif;
     }
 
     .stat-value {
       font-family: 'Orbitron', sans-serif;
-      font-size: 20px;
+      font-size: 19px;
       font-weight: 700;
       color: #fff;
       transition: color 0.3s ease;
@@ -249,22 +272,22 @@
     /* ===== Buttons ===== */
     .btn {
       width: 100%;
-      padding: 12px 16px;
+      padding: 11px 14px;
       border: none;
-      border-radius: 4px;
+      border-radius: 3px;
       background: linear-gradient(135deg, var(--rust), var(--rust-deep));
       color: #fff;
       font-family: 'Orbitron', sans-serif;
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 700;
       letter-spacing: 2px;
       cursor: pointer;
       text-transform: uppercase;
       box-shadow:
-        0 3px 16px rgba(184, 61, 14, 0.3),
-        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        0 3px 14px rgba(184, 61, 14, 0.28),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08);
       transition: all 0.15s ease;
-      margin-top: 10px;
+      margin-top: 8px;
       position: relative;
       overflow: hidden;
     }
@@ -274,8 +297,8 @@
       position: absolute;
       top: 0; left: -100%;
       width: 100%; height: 100%;
-      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
-      transition: left 0.4s ease;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.12), transparent);
+      transition: left 0.35s ease;
     }
 
     .btn:hover::after { left: 100%; }
@@ -283,19 +306,19 @@
     .btn:hover {
       transform: translateY(-1px);
       box-shadow:
-        0 5px 22px rgba(232, 93, 42, 0.4),
-        inset 0 1px 0 rgba(255, 255, 255, 0.15);
+        0 5px 20px rgba(232, 93, 42, 0.38),
+        inset 0 1px 0 rgba(255, 255, 255, 0.12);
     }
 
     .btn:active {
       transform: translateY(0);
       box-shadow:
-        0 2px 10px rgba(184, 61, 14, 0.3),
+        0 2px 8px rgba(184, 61, 14, 0.25),
         inset 0 2px 4px rgba(0, 0, 0, 0.2);
     }
 
     .btn:disabled {
-      opacity: 0.4;
+      opacity: 0.35;
       cursor: not-allowed;
       transform: none;
     }
@@ -304,37 +327,69 @@
       background: transparent;
       border: 1px solid var(--panel-border);
       box-shadow: none;
-      margin-top: 6px;
+      margin-top: 5px;
       color: var(--text-dim);
     }
 
     .btn-secondary:hover {
-      background: rgba(184, 61, 14, 0.06);
+      background: rgba(184, 61, 14, 0.05);
       border-color: var(--rust-glow);
       color: var(--text);
-      box-shadow: 0 3px 14px rgba(184, 61, 14, 0.15);
+      box-shadow: 0 3px 12px rgba(184, 61, 14, 0.12);
     }
 
     .btn-secondary:active {
-      background: rgba(184, 61, 14, 0.1);
+      background: rgba(184, 61, 14, 0.08);
+    }
+
+    /* ===== Panel label ===== */
+    .panel-label {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 9px;
+      font-weight: 600;
+      color: var(--ochre);
+      letter-spacing: 2.5px;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .panel-label::before {
+      content: '';
+      width: 3px; height: 10px;
+      background: var(--rust-glow);
+      border-radius: 1px;
     }
 
     /* ===== Log ===== */
     .log {
       flex: 1;
-      min-height: 120px;
+      min-height: 80px;
       max-height: 320px;
       overflow-y: auto;
       font-size: 12px;
-      line-height: 1.6;
+      line-height: 1.55;
       color: var(--text);
-      padding-right: 4px;
+      padding-right: 3px;
+    }
+
+    .log:empty::after {
+      content: '暂无记录';
+      display: block;
+      color: var(--text-faint);
+      font-size: 11px;
+      text-align: center;
+      padding: 20px 0;
+      font-family: 'Orbitron', sans-serif;
+      letter-spacing: 2px;
     }
 
     .log-entry {
-      padding: 8px 0;
-      border-bottom: 1px solid rgba(184, 61, 14, 0.06);
-      animation: slideIn 0.4s ease;
+      padding: 7px 0;
+      border-bottom: 1px solid rgba(184, 61, 14, 0.05);
+      animation: slideIn 0.35s ease;
     }
 
     .log-entry:last-child { border-bottom: none; }
@@ -342,46 +397,46 @@
     .log-step {
       font-family: 'Orbitron', sans-serif;
       color: var(--rust-glow);
-      font-size: 9px;
+      font-size: 8px;
       letter-spacing: 2px;
-      margin-bottom: 3px;
+      margin-bottom: 2px;
       font-weight: 600;
     }
 
     .log-title {
       font-weight: 700;
       color: #fff;
-      margin-bottom: 3px;
-      font-size: 13px;
+      margin-bottom: 2px;
+      font-size: 12px;
     }
 
     .log-reason {
       color: var(--text-dim);
       font-size: 11px;
       word-break: break-word;
-      line-height: 1.5;
+      line-height: 1.45;
     }
 
-    /* ===== Building Card ===== */
+    /* ===== Building card ===== */
     .building-card {
-      background: rgba(184, 61, 14, 0.04);
-      border-radius: 4px;
-      padding: 12px 14px;
-      margin-top: 8px;
-      border: 1px solid rgba(184, 61, 14, 0.1);
+      background: rgba(184, 61, 14, 0.03);
+      border-radius: 3px;
+      padding: 10px 12px;
+      margin-top: 6px;
+      border: 1px solid rgba(184, 61, 14, 0.08);
     }
 
     .building-card .name {
       font-family: 'Orbitron', sans-serif;
       color: var(--rust-glow);
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 700;
-      margin-bottom: 6px;
+      margin-bottom: 5px;
       word-break: break-word;
     }
 
     .building-card .meta {
-      font-size: 11px;
+      font-size: 10px;
       color: var(--text-dim);
       line-height: 1.7;
     }
@@ -389,38 +444,38 @@
     /* ===== Loader ===== */
     .loader {
       display: inline-block;
-      width: 14px; height: 14px;
-      border: 2px solid rgba(255, 255, 255, 0.15);
+      width: 13px; height: 13px;
+      border: 2px solid rgba(255, 255, 255, 0.12);
       border-top-color: var(--rust-glow);
       border-radius: 50%;
       animation: spin 0.8s linear infinite;
-      margin-right: 8px;
+      margin-right: 7px;
       vertical-align: middle;
     }
 
     /* ===== Toast ===== */
     .toast {
       position: fixed;
-      bottom: 24px;
+      bottom: 20px;
       left: 50%;
-      transform: translateX(-50%) translateY(16px);
+      transform: translateX(-50%) translateY(14px);
       background: var(--panel-bg);
       border: 1px solid var(--rust-glow);
-      padding: 12px 24px;
-      border-radius: 4px;
+      padding: 11px 22px;
+      border-radius: 3px;
       color: #fff;
-      font-size: 13px;
+      font-size: 12px;
       opacity: 0;
       pointer-events: none;
       transition: all 0.3s ease;
       z-index: 100;
       box-shadow:
-        0 8px 32px rgba(0, 0, 0, 0.6),
-        0 0 20px rgba(232, 93, 42, 0.2);
+        0 8px 28px rgba(0, 0, 0, 0.6),
+        0 0 16px rgba(232, 93, 42, 0.15);
       max-width: 80vw;
       text-align: center;
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
       letter-spacing: 0.5px;
     }
 
@@ -431,44 +486,31 @@
 
     /* ===== Hint ===== */
     .hint {
-      font-size: 10px;
+      font-size: 9px;
       color: var(--text-faint);
-      margin-top: 10px;
+      margin-top: 8px;
       line-height: 1.6;
       letter-spacing: 0.3px;
     }
 
-    /* ===== Panel label (section titles) ===== */
-    .panel-label {
-      font-family: 'Orbitron', sans-serif;
-      font-size: 10px;
-      font-weight: 600;
-      color: var(--ochre);
-      letter-spacing: 2px;
-      text-transform: uppercase;
-      margin-bottom: 8px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .panel-label::before {
-      content: '';
-      width: 3px; height: 12px;
-      background: var(--rust-glow);
-      border-radius: 1px;
-    }
-
     /* ===== Animations ===== */
+    @keyframes panelEnter {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
     @keyframes slideIn {
-      from { opacity: 0; transform: translateX(-8px); }
+      from { opacity: 0; transform: translateX(-6px); }
       to { opacity: 1; transform: translateX(0); }
     }
     @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.85); }
+    }
 
     /* ===== Scrollbar ===== */
-    ::-webkit-scrollbar { width: 4px; }
-    ::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); }
+    ::-webkit-scrollbar { width: 3px; }
+    ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb {
       background: var(--rust);
       border-radius: 2px;
@@ -484,22 +526,24 @@
           "right";
         grid-template-columns: 1fr;
         grid-template-rows: auto auto auto;
-        gap: 10px;
-        padding: 10px;
+        gap: 8px;
+        padding: 8px;
       }
       .center-area { display: none; }
-      .panel { max-height: none; }
-      h1 { font-size: 18px; letter-spacing: 2px; }
-      .header { flex-direction: column; gap: 8px; align-items: flex-start; }
-      .header-right { width: 100%; justify-content: space-between; }
-      .log { max-height: 200px; }
+      .panel { max-height: none; padding: 10px 12px; }
+      h1 { font-size: 18px; letter-spacing: 3px; }
+      .header { flex-direction: column; gap: 6px; align-items: flex-start; padding: 8px 14px; }
+      .header-right { width: 100%; justify-content: space-between; gap: 12px; }
+      .log { max-height: 160px; }
     }
 
     @media (max-width: 500px) {
-      .stats-grid { grid-template-columns: 1fr 1fr; gap: 6px; }
-      .stat { padding: 8px; }
+      .stats-grid { gap: 4px; }
+      .stat { padding: 7px 8px; }
       .stat-value { font-size: 16px; }
-      .btn { padding: 10px; font-size: 11px; }
+      .btn { padding: 9px; font-size: 10px; letter-spacing: 1px; }
+      h1 { font-size: 16px; letter-spacing: 2px; }
+      .render-mode { display: none; }
     }
   </style>
 </head>
@@ -521,7 +565,7 @@
         </div>
         <div class="header-stat">
           <div class="header-stat-label">STATUS</div>
-          <div class="header-stat-value" id="status-text" style="font-size:12px;color:var(--hud-green);">等待启动</div>
+          <div class="header-stat-value" id="status-text"><span class="status-pulse"></span>等待启动</div>
         </div>
       </div>
     </div>
@@ -678,11 +722,10 @@
           this.width = window.innerWidth;
           this.height = window.innerHeight;
           this.activeAnimations = new Set();
-          this._eventListeners = []; // 跟踪事件监听器以便清理
+          this._eventListeners = [];
 
           this.setupCanvas();
 
-          // 保存resize处理器引用
           this._onResize = () => this.setupCanvas();
           window.addEventListener('resize', this._onResize);
           this._eventListeners.push({ target: window, type: 'resize', fn: this._onResize });
@@ -780,7 +823,6 @@
           }
           this.activeAnimations.clear();
           this.buildings = [];
-          // 移除所有跟踪的事件监听器
           if (this._eventListeners) {
             for (const listener of this._eventListeners) {
               try {
@@ -824,7 +866,7 @@
             ctx.fill();
           });
 
-          // 火星地表渐变 — 更浓郁的铁锈色调
+          // 火星地表渐变
           const gradient = ctx.createLinearGradient(0, h * 0.35, 0, h);
           gradient.addColorStop(0, '#1a0e08');
           gradient.addColorStop(0.25, '#3a1810');
@@ -835,7 +877,7 @@
           ctx.fillRect(0, h * 0.35, w, h * 0.65);
 
           // 地表纹理噪点
-          ctx.fillStyle = 'rgba(180, 80, 30, 0.03)';
+          ctx.fillStyle = 'rgba(180, 80, 30, 0.025)';
           for (let i = 0; i < 60; i++) {
             const tx = Math.random() * w;
             const ty = h * 0.4 + Math.random() * h * 0.6;
@@ -844,6 +886,13 @@
             ctx.arc(tx, ty, tr, 0, Math.PI * 2);
             ctx.fill();
           }
+
+          // 地平线辉光
+          const horizonGlow = ctx.createLinearGradient(0, h * 0.33, 0, h * 0.4);
+          horizonGlow.addColorStop(0, 'rgba(232, 93, 42, 0.08)');
+          horizonGlow.addColorStop(1, 'transparent');
+          ctx.fillStyle = horizonGlow;
+          ctx.fillRect(0, h * 0.33, w, h * 0.07);
 
           this.drawGroundGrid();
 
@@ -868,7 +917,7 @@
           const gridRadius = 600;
 
           // 同心圆
-          ctx.strokeStyle = 'rgba(232, 93, 42, 0.15)';
+          ctx.strokeStyle = 'rgba(232, 93, 42, 0.13)';
           ctx.lineWidth = 1;
           for (let r = 40; r <= gridRadius; r += 60) {
             const perspectiveR = r * (1 - this.cameraHeight / 300);
@@ -878,8 +927,8 @@
           }
 
           // 放射线
-          ctx.strokeStyle = 'rgba(184, 61, 14, 0.10)';
-          ctx.lineWidth = 0.7;
+          ctx.strokeStyle = 'rgba(184, 61, 14, 0.08)';
+          ctx.lineWidth = 0.6;
           for (let i = 0; i < 20; i++) {
             const angle = (i / 20) * Math.PI * 2 + this.cameraAngle;
             const x1 = centerX;
@@ -894,8 +943,8 @@
           }
 
           // 中心标记
-          ctx.strokeStyle = 'rgba(232, 93, 42, 0.4)';
-          ctx.lineWidth = 1.5;
+          ctx.strokeStyle = 'rgba(232, 93, 42, 0.35)';
+          ctx.lineWidth = 1.2;
           ctx.beginPath();
           ctx.moveTo(centerX - 8, centerY);
           ctx.lineTo(centerX + 8, centerY);
@@ -911,8 +960,8 @@
 
           // 外层光晕
           const outerGlow = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, 120);
-          outerGlow.addColorStop(0, 'rgba(255, 180, 80, 0.35)');
-          outerGlow.addColorStop(0.4, 'rgba(232, 93, 42, 0.12)');
+          outerGlow.addColorStop(0, 'rgba(255, 180, 80, 0.3)');
+          outerGlow.addColorStop(0.4, 'rgba(232, 93, 42, 0.1)');
           outerGlow.addColorStop(1, 'rgba(184, 61, 14, 0)');
           ctx.fillStyle = outerGlow;
           ctx.beginPath();
@@ -921,8 +970,8 @@
 
           // 太阳核心
           const coreGrad = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, 20);
-          coreGrad.addColorStop(0, 'rgba(255, 230, 160, 0.8)');
-          coreGrad.addColorStop(0.5, 'rgba(255, 180, 80, 0.4)');
+          coreGrad.addColorStop(0, 'rgba(255, 230, 160, 0.7)');
+          coreGrad.addColorStop(0.5, 'rgba(255, 180, 80, 0.3)');
           coreGrad.addColorStop(1, 'rgba(232, 93, 42, 0)');
           ctx.fillStyle = coreGrad;
           ctx.beginPath();
@@ -1057,7 +1106,6 @@
           }
         }
 
-        // 基于种子的伪随机数生成器，避免每帧闪烁
         seededRandom(seed) {
           let s = seed | 0;
           return function() {
@@ -1110,7 +1158,6 @@
           ctx.ellipse(x, y, scale * 14, scale * 5, 0, 0, Math.PI * 2);
           ctx.fill();
 
-          // 使用种子随机生成固定位置的窗户
           for (let i = 0; i < 8; i++) {
             const wx = x + (rng() - 0.5) * scale * 20;
             const wy = y - scale * 5 - rng() * scale * 15;
@@ -1146,7 +1193,6 @@
           ctx.fill();
           ctx.stroke();
 
-          // 使用种子随机生成固定位置的植物
           for (let i = 0; i < 12; i++) {
             const px = x - scale * 18 + rng() * scale * 36;
             const py = y - scale * 2 - rng() * scale * 8;
@@ -1205,7 +1251,6 @@
           };
           this.buildings.push(newBuilding);
 
-          // 建筑升起动画 - 安全地跟踪动画
           const animId = Symbol('rise');
           this.activeAnimations.add(animId);
           const animateRise = () => {
@@ -1253,13 +1298,12 @@
           }
           renderer.clearBuildings();
 
-          // 使用 textContent 安全清空
           while (DOM.log.firstChild) DOM.log.removeChild(DOM.log.firstChild);
           while (DOM.buildingList.firstChild) DOM.buildingList.removeChild(DOM.buildingList.firstChild);
 
           DOM.currentPlan.innerHTML = '<div class="name">—</div><div class="meta">暂无建造计划</div>';
           updateStats();
-          setStatus('等待启动');
+          setStatus('等待启动', 'var(--hud-green)');
           DOM.btnAuto.textContent = '自动建造';
           DOM.btnAuto.style.borderColor = '';
           showToast('殖民地已重置');
@@ -1274,7 +1318,7 @@
           DOM.btnNext.textContent = '';
           DOM.btnNext.appendChild(loader);
           DOM.btnNext.appendChild(document.createTextNode('AI 思考中...'));
-          setStatus('AI 正在规划下一步...');
+          setStatus('AI 正在规划...', 'var(--hud-amber)');
 
           try {
             const plan = await fetchPlan();
@@ -1282,7 +1326,7 @@
           } catch (err) {
             console.warn('AI plan failed:', err.message);
             showToast('AI 决策失败，请重试');
-            setStatus('决策失败，请重试');
+            setStatus('决策失败', 'var(--hud-red)');
           } finally {
             state.processing = false;
             DOM.btnNext.disabled = false;
@@ -1413,7 +1457,6 @@
           if (!obj || typeof obj !== 'object') throw new Error('返回格式不正确');
           if (!obj.building || !obj.type) throw new Error('返回格式不正确');
 
-          // 白名单验证类型
           let safeType = sanitizeString(obj.type, 10);
           if (!CONFIG.allowedTypes.includes(safeType)) {
             safeType = '默认';
@@ -1431,7 +1474,6 @@
             scale: sanitizeNumber(obj.scale, 0.8, 1.5, 1)
           };
 
-          // 碰撞检测
           let attempts = 0;
           const maxAttempts = 30;
           while (isTooClose(plan) && attempts < maxAttempts) {
@@ -1466,7 +1508,7 @@
           addLog(plan);
           updateCurrentPlan(plan);
           updateBuildingList();
-          setStatus(`已完成第 ${state.step} 步建造`);
+          setStatus(`已完成第 ${state.step} 步`, 'var(--hud-green)');
           showToast(`已建造：${plan.building}`);
         }
 
@@ -1522,7 +1564,6 @@
           const entry = createLogEntry(plan.step, `${plan.building} · ${plan.type}`, plan.reason);
           DOM.log.insertBefore(entry, DOM.log.firstChild);
 
-          // 限制日志条目数量
           while (DOM.log.children.length > 50) {
             DOM.log.removeChild(DOM.log.lastChild);
           }
@@ -1576,8 +1617,12 @@
           }
         }
 
-        function setStatus(text) {
-          DOM.statusText.textContent = text;
+        function setStatus(text, color) {
+          DOM.statusText.innerHTML = `<span class="status-pulse"></span>${text}`;
+          if (color) {
+            DOM.statusText.style.color = color;
+            DOM.statusText.querySelector('.status-pulse').style.background = color;
+          }
         }
 
         function toggleAuto() {
@@ -1614,7 +1659,7 @@
         return { reset, nextStep, toggleAuto, destroy, state };
       }
 
-      // ============ Toast 提示 ============
+      // ============ Toast ============
       let toastTimer = null;
       function showToast(msg) {
         if (toastTimer) clearTimeout(toastTimer);
@@ -1629,7 +1674,6 @@
       const renderer = new MarsCityRenderer(canvas);
       const game = createGame(renderer);
 
-      // 事件绑定 - 使用 addEventListener 而非内联 onclick，并保存引用以便清理
       const _onBtnNext = () => game.nextStep();
       const _onBtnAuto = () => game.toggleAuto();
       const _onBtnReset = () => game.reset();
@@ -1643,7 +1687,6 @@
       DOM.btnReset.addEventListener('click', _onBtnReset);
       window.addEventListener('beforeunload', _onBeforeUnload);
 
-      // 扩展renderer和game的destroy以清理按钮事件
       const originalRendererDestroy = renderer.destroy.bind(renderer);
       renderer.destroy = function() {
         originalRendererDestroy();
@@ -1655,11 +1698,6 @@
         } catch (e) { /* 忽略清理错误 */ }
       };
 
-      // 防止全局暴露，仅在开发环境暴露
-      // window.game = game;
-      // window.renderer = renderer;
-
-      // 初始化显示
       game.reset();
       showToast('ARES 火星城市准备就绪 · 点击下一步开始建造');
     })();
